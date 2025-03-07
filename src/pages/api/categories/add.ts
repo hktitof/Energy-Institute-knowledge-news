@@ -1,6 +1,6 @@
 // pages/api/categories/add.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { executeQuery, connectDB } from "../../../../utils/ds";
+import { executeQuery, connectDB } from "../../../utils/ds";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

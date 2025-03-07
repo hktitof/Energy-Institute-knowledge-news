@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { executeQuery, connectDB } from "../../../../utils/ds";
+import { executeQuery, connectDB } from "../../../utils/ds";
 
 // Ensure the DB is connected when the API route is hit
 connectDB();
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   `;
 
   try {
-    const rows = await executeQuery(query) || [];
+    const rows = (await executeQuery(query)) || [];
     console.log("Fetched rows:", rows);
 
     interface SearchTerm {
@@ -36,21 +36,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Group rows into categories with search terms
     const categoriesMap: { [key: number]: Category } = {};
-    rows.forEach((row: { CategoryID: number; CategoryName: string; SearchTermID: number | null; Term: string | null }) => {
-      if (!categoriesMap[row.CategoryID]) {
-        categoriesMap[row.CategoryID] = {
-          CategoryID: row.CategoryID,
-          CategoryName: row.CategoryName,
-          searchTerms: [],
-        };
+    rows.forEach(
+      (row: { CategoryID: number; CategoryName: string; SearchTermID: number | null; Term: string | null }) => {
+        if (!categoriesMap[row.CategoryID]) {
+          categoriesMap[row.CategoryID] = {
+            CategoryID: row.CategoryID,
+            CategoryName: row.CategoryName,
+            searchTerms: [],
+          };
+        }
+        if (row.SearchTermID !== null) {
+          categoriesMap[row.CategoryID].searchTerms.push({
+            SearchTermID: row.SearchTermID,
+            Term: row.Term ?? "",
+          });
+        }
       }
-      if (row.SearchTermID !== null) {
-        categoriesMap[row.CategoryID].searchTerms.push({
-          SearchTermID: row.SearchTermID,
-          Term: row.Term ?? '',
-        });
-      }
-    });
+    );
     const categories = Object.values(categoriesMap);
     res.status(200).json({ categories });
   } catch (error) {

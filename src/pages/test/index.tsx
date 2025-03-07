@@ -1,32 +1,19 @@
 // pages/index.js
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, X, Edit, ExternalLink, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, X, ExternalLink, Plus } from "lucide-react";
 import axios from "axios";
 import { useEffect } from "react";
 
-interface ApiCategory {
-  CategoryID: number;
-  CategoryName: string;
-  searchTerms: { SearchTermID: number; Term: string }[];
-}
+// import fetchCategories from utils.ts
+import { fetchCategories } from "../../utils/utils";
 
-interface DummyArticle {
-  id: string;
-  title: string;
-  content: string;
-  summary: string;
-  link: string;
-  selected: boolean;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  searchTerms: string[];
-  showTable: boolean;
-  articles: DummyArticle[];
-}
+// import types Category and Article from utils.ts
+import { Category, Article } from "../../utils/utils";
+// import loader icon for loading states
+import { Loader } from "lucide-react";
+import { Trash, Trash2, RefreshCw, Link, Globe } from "lucide-react";
+import CategoryManager from "@/components/CategoryManager";
 
 export default function NewsAggregator() {
   // Declare a state variable called categories and set it to an empty array of Category objects
@@ -34,123 +21,56 @@ export default function NewsAggregator() {
 
   // State for new category form
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [newSearchTerm, setNewSearchTerm] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  // const [newSearchTerm, setNewSearchTerm] = useState("");
+  // const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   // this will be used to track if the user is adding a new category and show a loading spinner
-  const [adding, setAdding] = useState(false);
 
-  // State for summary prompt template
-  const [summaryPrompt, setSummaryPrompt] = useState(
-    "Summarise the following: #article_content# , DO NOT EXCEED #numbers# words"
-  );
-  const [editingPrompt, setEditingPrompt] = useState(false);
-
-  function generateDummyArticles(category: string, count: number): DummyArticle[] {
-    const articles: DummyArticle[] = [];
-    for (let i = 1; i <= count; i++) {
-      articles.push({
-        id: `${category.toLowerCase()}-${i}`,
-        title: `${category} Article ${i}: Latest Developments in the Field`,
-        content: `This is dummy content for ${category} article ${i}. It contains information about recent developments in the ${category.toLowerCase()} sector. Multiple paragraphs of text would normally be here describing the news event in detail.`,
-        summary: "_",
-        link: `https://example.com/${category.toLowerCase()}/article-${i}`,
-        selected: false,
-      });
-    }
-    return articles;
-  }
-
-  // Fetch categories and search terms from API
-  const fetchCategories = async () => {
-    axios
-      .get<{ categories: ApiCategory[] }>("/api/categories/categories")
-      .then(response => {
-        const fetchedCategories = response.data.categories.map(cat => ({
-          id: cat.CategoryID,
-          name: cat.CategoryName,
-          searchTerms: cat.searchTerms.map(term => term.Term),
-          showTable: false, // always false on the client side
-          articles: [], // empty for now
-        }));
-        setCategories(fetchedCategories);
-      })
-      .catch(error => {
-        console.error("Error fetching categories:", error);
-      });
-  };
+  // // Fetch categories and search terms from API
 
   useEffect(() => {
     // call the fetchCategories function when the component mounts
-    fetchCategories();
+    fetchCategories(setCategories);
   }, []);
 
-  const addCategory = async () => {
-    if (newCategoryName.trim() === "") return;
-    setAdding(true);
+  const [loadingSearchTermId, setLoadingSearchTermId] = useState<number | null>(null); // Track loading state
+
+  const removeSearchTerm = async (categoryId: number, termIndex: number) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    if (!category) return;
+
+    const searchTerm = category.searchTerms[termIndex];
+    if (!searchTerm) return;
+
+    setLoadingSearchTermId(termIndex); // Show loading indicator
+
+    // Optimistic UI update: Remove the term locally first
+    const updatedCategories = categories.map(cat => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          searchTerms: cat.searchTerms.filter((_, index) => index !== termIndex),
+        };
+      }
+      return cat;
+    });
+    setCategories(updatedCategories);
+
     try {
-      const response = await axios.post("/api/categories/add", { categoryName: newCategoryName });
-      console.log("Category added:", response.data);
-      setNewCategoryName("");
-      // After successfully adding, fetch the updated list
-      await fetchCategories();
+      // API Call to delete the term
+      await axios.delete("/api/searchTerms/delete", {
+        data: { searchTerm }, // Ensure your API expects this in the body
+      });
+
+      // Fetch updated categories from the API to sync with the database
+      fetchCategories(setCategories);
     } catch (error) {
-      console.error("Error adding category:", error);
+      console.error("Error deleting search term:", error);
+
+      // Revert UI on error
+      setCategories(categories);
     } finally {
-      setAdding(false);
+      setLoadingSearchTermId(null); // Remove loading state
     }
-  };
-
-  // Add a search term to a category
-  const addSearchTerm = () => {
-    if (newSearchTerm.trim() === "" || selectedCategoryId === null) return;
-
-    setCategories(
-      categories.map(category => {
-        if (category.id === selectedCategoryId) {
-          return {
-            ...category,
-            searchTerms: [...category.searchTerms, newSearchTerm],
-          };
-        }
-        return category;
-      })
-    );
-
-    setNewSearchTerm("");
-  };
-
-  // Remove a search term from a category
-  interface Category {
-    id: number;
-    name: string;
-    searchTerms: string[];
-    showTable: boolean;
-    articles: Article[];
-  }
-
-  interface Article {
-    id: string;
-    title: string;
-    content: string;
-    summary: string;
-    link: string;
-    selected: boolean;
-  }
-
-  const removeSearchTerm = (categoryId: number, termIndex: number): void => {
-    setCategories(
-      categories.map((category: Category) => {
-        if (category.id === categoryId) {
-          const newSearchTerms = [...category.searchTerms];
-          newSearchTerms.splice(termIndex, 1);
-          return {
-            ...category,
-            searchTerms: newSearchTerms,
-          };
-        }
-        return category;
-      })
-    );
   };
 
   // Toggle category table visibility
@@ -236,6 +156,11 @@ export default function NewsAggregator() {
     // In a real app, this would call an API to summarize the articles
   };
 
+  // console logs
+
+  // print categories
+  console.log("categories :", categories);
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Left sidebar with categories */}
@@ -245,17 +170,53 @@ export default function NewsAggregator() {
         </div>
 
         {/* Categories container with scroll */}
-        <div className="flex-grow overflow-y-auto pb-16">
+        <div className="flex-grow overflow-y-auto pb-16 pl-3">
           {categories.map(category => (
-            <div key={category.id} className="border-b border-gray-100">
+            <div
+              key={category.id}
+              className="border rounded-lg mb-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 bg-white"
+            >
               <motion.div
-                className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                className="p-5 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200"
                 onClick={() => toggleCategoryTable(category.id)}
               >
-                <h2 className="text-lg font-medium text-gray-700">{category.name}</h2>
-                <div className="flex items-center">
+                <div className="flex items-center space-x-3">
+                  <h2 className="text-lg font-semibold text-gray-800">{category.name}</h2>
+                  <div className="flex space-x-2">
+                    <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
+                      {category.searchTerms.length} terms
+                    </span>
+                    {category.links && (
+                      <span className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full">
+                        {category.links.length} links
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <a
+                    href={`https://news.google.com/search?q=${encodeURIComponent(category.searchTerms.join(" OR "))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-full text-gray-500 hover:bg-blue-50 hover:text-blue-500 transition-colors duration-200"
+                    onClick={e => e.stopPropagation()}
+                    title="Open in Google News"
+                  >
+                    <ExternalLink size={18} />
+                  </a>
                   <button
-                    className="mr-2 p-1 rounded-md hover:bg-gray-200"
+                    className="p-2 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors duration-200"
+                    onClick={e => {
+                      e.stopPropagation();
+                      // Add your remove category function here
+                      // Example: removeCategory(category.id)
+                    }}
+                    title="Remove category"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                  <button
+                    className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors duration-200"
                     onClick={e => {
                       e.stopPropagation();
                       if (category.showTable) {
@@ -263,40 +224,177 @@ export default function NewsAggregator() {
                       }
                     }}
                   >
-                    {category.showTable ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    {category.showTable ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
                 </div>
               </motion.div>
 
               <AnimatePresence>
-                {category.searchTerms.length > 0 && (
+                {category.showTable && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="px-4 pb-4 overflow-hidden"
+                    className="px-5 pb-5 pt-0 overflow-hidden"
                   >
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {category.searchTerms.map((term, index) => (
-                        <div key={index} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md">
-                          <span>{term}</span>
+                    {/* Search Terms Section */}
+                    {category.searchTerms.length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="text-sm font-medium text-gray-700">Search Terms</h3>
                           <button
-                            className="ml-2 text-blue-600 hover:text-blue-800"
-                            onClick={() => removeSearchTerm(category.id, index)}
+                            className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1"
+                            onClick={() => {
+                              /* Add function to clear all search terms */
+                            }}
                           >
-                            <X size={16} />
+                            <Trash size={12} />
+                            <span>Clear all</span>
                           </button>
                         </div>
-                      ))}
-                    </div>
+                        <div className="flex flex-wrap gap-2">
+                          {category.searchTerms.map((term, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full shadow-sm"
+                            >
+                              <span className="text-sm font-medium">{term}</span>
+                              <button
+                                className={`ml-1.5 rounded-full p-0.5 ${
+                                  loadingSearchTermId === index
+                                    ? "text-gray-400 cursor-not-allowed"
+                                    : "text-blue-500 hover:text-red-500 hover:bg-blue-100 transition-colors duration-200"
+                                }`}
+                                onClick={() => removeSearchTerm(category.id, index)}
+                                disabled={loadingSearchTermId === index}
+                              >
+                                {loadingSearchTermId === index ? (
+                                  <Loader size={14} className="animate-spin" />
+                                ) : (
+                                  <X size={14} />
+                                )}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                    <div className="flex justify-end">
+                    {/* Links Section with Pagination */}
+                    {category.links && category.links.length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="text-sm font-medium text-gray-700">Saved Links</h3>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              className="text-xs text-gray-500 hover:text-blue-600 flex items-center"
+                              onClick={() => {
+                                /* Function to add new link */
+                              }}
+                            >
+                              <Plus size={14} className="mr-1" />
+                              Add link
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Links Grid/List with conditional rendering based on number of links */}
+                        {category.links.length <= 5 ? (
+                          // Simple list for few links
+                          <div className="space-y-2">
+                            {category.links.slice(0, 5).map((link, index) => (
+                              <a
+                                key={index}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 group"
+                              >
+                                <div className="flex items-center space-x-2 overflow-hidden">
+                                  <Globe size={16} className="text-gray-400 flex-shrink-0" />
+                                  <span className="text-sm text-gray-700 truncate">{link.title || link.url}</span>
+                                </div>
+                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                    onClick={e => {
+                                      e.preventDefault();
+                                      // Remove link function
+                                    }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          // Grid with pagination for many links
+                          <div>
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              {category.links.slice(0, 6).map((link, index) => (
+                                <a
+                                  key={index}
+                                  href={link.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center p-2 rounded-md hover:bg-gray-50 border border-gray-100 group"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center space-x-2">
+                                      <Globe size={14} className="text-gray-400 flex-shrink-0" />
+                                      <span className="text-sm text-gray-700 font-medium truncate">
+                                        {link.title || "Untitled"}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 truncate mt-1">{link.url}</p>
+                                  </div>
+                                  <button
+                                    className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={e => {
+                                      e.preventDefault();
+                                      // Remove link function
+                                    }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </a>
+                              ))}
+                            </div>
+
+                            {category.links.length > 6 && (
+                              <div className="flex justify-between items-center text-sm text-gray-500">
+                                <span>Showing 6 of {category.links.length} links</span>
+                                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                  View all links
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-between items-center mt-4">
+                      <div className="flex space-x-2">
+                        <button
+                          className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors duration-200"
+                          onClick={() => {
+                            /* Add function to manage links */
+                          }}
+                        >
+                          <Link size={14} />
+                          <span>Manage Links</span>
+                        </button>
+                      </div>
                       <button
-                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition hover:cursor-pointer"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow"
                         onClick={() => fetchNewsForCategory(category.id)}
                       >
-                        Fetch News
+                        <RefreshCw size={14} />
+                        <span>Fetch News</span>
                       </button>
                     </div>
                   </motion.div>
@@ -320,91 +418,14 @@ export default function NewsAggregator() {
       {/* Right content area */}
       <div className="w-2/3 overflow-y-auto">
         {/* Add Category and Search Terms Form */}
-        <div className="p-6 bg-white shadow-sm ">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Add New Category & Search Terms</h2>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Category</label>
-              <div className="flex">
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={e => setNewCategoryName(e.target.value)}
-                  className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Category name"
-                />
-                <button
-                  onClick={addCategory}
-                  disabled={adding}
-                  className={`ml-2 bg-green-600 text-white p-2 rounded-md transition-colors duration-200 ${
-                    adding ? "opacity-50 cursor-not-allowed" : "hover:bg-green-700"
-                  }`}
-                >
-                  {adding ? "Adding..." : <Plus size={20} />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Add Search Term</label>
-              <div className="flex">
-                <select
-                  value={selectedCategoryId || ""}
-                  onChange={e => setSelectedCategoryId(Number(e.target.value))}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mr-2"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  value={newSearchTerm}
-                  onChange={e => setNewSearchTerm(e.target.value)}
-                  className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Search term"
-                />
-                <button
-                  onClick={addSearchTerm}
-                  className="ml-2 bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 hover:cursor-pointer"
-                >
-                  <Plus size={20} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Summary Prompt Template Section */}
-        <div className="p-6 bg-white shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Summary Prompt Template</h2>
-            <button
-              onClick={() => setEditingPrompt(!editingPrompt)}
-              className="text-blue-600 hover:text-blue-800 flex items-center hover:cursor-pointer"
-            >
-              <Edit size={18} className="mr-1" />
-              {editingPrompt ? "Save" : "Edit"}
-            </button>
-          </div>
-
-          {editingPrompt ? (
-            <textarea
-              value={summaryPrompt}
-              onChange={e => setSummaryPrompt(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
-            />
-          ) : (
-            <div className="p-3 bg-gray-50 rounded-md text-gray-700 border border-gray-200">{summaryPrompt}</div>
-          )}
-          <p className="mt-2 text-sm text-gray-500">
-            Use <code>#article_content#</code> to insert article content and <code>#numbers#</code> for word count.
-          </p>
-        </div>
+        <CategoryManager
+          newCategoryName={newCategoryName}
+          setNewCategoryName={setNewCategoryName}
+          categories={categories}
+          setCategories={setCategories}
+          fetchCategories={fetchCategories}
+        />
 
         {/* Articles Tables */}
         {categories.map(
