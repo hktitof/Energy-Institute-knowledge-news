@@ -2,53 +2,48 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, X, Edit, ExternalLink, Plus } from "lucide-react";
+import axios from "axios";
+import { useEffect } from "react";
+
+interface ApiCategory {
+  CategoryID: number;
+  CategoryName: string;
+  searchTerms: { SearchTermID: number; Term: string }[];
+}
+
+interface DummyArticle {
+  id: string;
+  title: string;
+  content: string;
+  summary: string;
+  link: string;
+  selected: boolean;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  searchTerms: string[];
+  showTable: boolean;
+  articles: DummyArticle[];
+}
 
 export default function NewsAggregator() {
-  // State for categories and search terms
-  const [categories, setCategories] = useState([
-    {
-      id: 1,
-      name: "Technology",
-      searchTerms: ["AI", "Machine Learning", "Web Development"],
-      showTable: false,
-      articles: generateDummyArticles("Technology", 5),
-    },
-    {
-      id: 2,
-      name: "Business",
-      searchTerms: ["Startups", "Investments", "Market Trends"],
-      showTable: false,
-      articles: generateDummyArticles("Business", 4),
-    },
-    {
-      id: 3,
-      name: "Health",
-      searchTerms: ["Wellness", "Medical Research", "Diet"],
-      showTable: false,
-      articles: generateDummyArticles("Health", 6),
-    },
-  ]);
+  // Declare a state variable called categories and set it to an empty array of Category objects
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // State for new category form
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newSearchTerm, setNewSearchTerm] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  // this will be used to track if the user is adding a new category and show a loading spinner
+  const [adding, setAdding] = useState(false);
 
   // State for summary prompt template
   const [summaryPrompt, setSummaryPrompt] = useState(
     "Summarise the following: #article_content# , DO NOT EXCEED #numbers# words"
   );
   const [editingPrompt, setEditingPrompt] = useState(false);
-
-  // Function to generate dummy articles
-  interface DummyArticle {
-    id: string;
-    title: string;
-    content: string;
-    summary: string;
-    link: string;
-    selected: boolean;
-  }
 
   function generateDummyArticles(category: string, count: number): DummyArticle[] {
     const articles: DummyArticle[] = [];
@@ -65,20 +60,44 @@ export default function NewsAggregator() {
     return articles;
   }
 
-  // Add a new category
-  const addCategory = () => {
+  // Fetch categories and search terms from API
+  const fetchCategories = async () => {
+    axios
+      .get<{ categories: ApiCategory[] }>("/api/categories/categories")
+      .then(response => {
+        const fetchedCategories = response.data.categories.map(cat => ({
+          id: cat.CategoryID,
+          name: cat.CategoryName,
+          searchTerms: cat.searchTerms.map(term => term.Term),
+          showTable: false, // always false on the client side
+          articles: [], // empty for now
+        }));
+        setCategories(fetchedCategories);
+      })
+      .catch(error => {
+        console.error("Error fetching categories:", error);
+      });
+  };
+
+  useEffect(() => {
+    // call the fetchCategories function when the component mounts
+    fetchCategories();
+  }, []);
+
+  const addCategory = async () => {
     if (newCategoryName.trim() === "") return;
-
-    const newCategory = {
-      id: categories.length + 1,
-      name: newCategoryName,
-      searchTerms: [],
-      showTable: false,
-      articles: [],
-    };
-
-    setCategories([...categories, newCategory]);
-    setNewCategoryName("");
+    setAdding(true);
+    try {
+      const response = await axios.post("/api/categories/add", { categoryName: newCategoryName });
+      console.log("Category added:", response.data);
+      setNewCategoryName("");
+      // After successfully adding, fetch the updated list
+      await fetchCategories();
+    } catch (error) {
+      console.error("Error adding category:", error);
+    } finally {
+      setAdding(false);
+    }
   };
 
   // Add a search term to a category
@@ -317,9 +336,12 @@ export default function NewsAggregator() {
                 />
                 <button
                   onClick={addCategory}
-                  className="ml-2 bg-green-600 text-white p-2 rounded-md hover:bg-green-700 hover:cursor-pointer"
+                  disabled={adding}
+                  className={`ml-2 bg-green-600 text-white p-2 rounded-md transition-colors duration-200 ${
+                    adding ? "opacity-50 cursor-not-allowed" : "hover:bg-green-700"
+                  }`}
                 >
-                  <Plus size={20} />
+                  {adding ? "Adding..." : <Plus size={20} />}
                 </button>
               </div>
             </div>

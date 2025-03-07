@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { executeQuery, connectDB } from "../../../utils/ds";
+import { executeQuery, connectDB } from "../../../../utils/ds";
 
 // Ensure the DB is connected when the API route is hit
 connectDB();
