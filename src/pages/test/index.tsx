@@ -13,6 +13,7 @@ import { Category, Article } from "../../utils/utils";
 // import loader icon for loading states
 import { Loader } from "lucide-react";
 import { Trash, Trash2, RefreshCw, Link, Globe } from "lucide-react";
+import { toast } from "react-toastify";
 import CategoryManager from "@/components/CategoryManager";
 
 export default function NewsAggregator() {
@@ -26,6 +27,9 @@ export default function NewsAggregator() {
   // this will be used to track if the user is adding a new category and show a loading spinner
 
   // // Fetch categories and search terms from API
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
   useEffect(() => {
     // call the fetchCategories function when the component mounts
@@ -78,15 +82,20 @@ export default function NewsAggregator() {
     (categoryId: number): void;
   }
 
+  // Function to toggle the category table
   const toggleCategoryTable: ToggleCategoryTable = categoryId => {
+    // Map through the categories array
     setCategories(
       categories.map((category: Category) => {
+        // If the category id matches the categoryId parameter
         if (category.id === categoryId) {
+          // Return a new category object with the showTable property toggled
           return {
             ...category,
             showTable: !category.showTable,
           };
         }
+        // Otherwise, return the original category object
         return category;
       })
     );
@@ -156,6 +165,46 @@ export default function NewsAggregator() {
     // In a real app, this would call an API to summarize the articles
   };
 
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+
+  /**
+   * Deletes a category and handles loading state using axios
+   * @param categoryId The ID of the category to delete
+   * @param e The click event
+   */
+  const handleDeleteCategory = async (categoryId: string, e: React.MouseEvent) => {
+    // Prevent event bubbling to parent elements
+    e.stopPropagation();
+
+    // Set loading state
+    setDeletingCategoryId(categoryId);
+
+    try {
+      await axios.delete("/api/categories/delete", {
+        data: { categoryId },
+      });
+
+      // Handle successful deletion - update your state to remove the category
+      setCategories(prevCategories => prevCategories.filter(category => category.id !== Number(categoryId)));
+
+      // You might want to show a success toast/notification here
+      toast.success("Category deleted successfully");
+    } catch (error) {
+      console.error("Error deleting category:", error);
+
+      // Show error notification with appropriate message
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || "Failed to delete category";
+        toast.error(errorMessage);
+      } else {
+        toast.error("Failed to delete category");
+      }
+    } finally {
+      // Clear loading state
+      setDeletingCategoryId(null);
+    }
+  };
+
   // console logs
 
   // print categories
@@ -170,15 +219,19 @@ export default function NewsAggregator() {
         </div>
 
         {/* Categories container with scroll */}
-        <div className="flex-grow overflow-y-auto pb-16 pl-3">
+        <div className="flex-grow overflow-y-auto pb-20 pl-3 pr-3 pt-3">
           {categories.map(category => (
             <div
               key={category.id}
-              className="border rounded-lg mb-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 bg-white"
+              className="border rounded-md border-gray-300 mb-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 bg-white"
             >
               <motion.div
                 className="p-5 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-                onClick={() => toggleCategoryTable(category.id)}
+                onClick={() => {
+                  toggleCategoryTable(category.id);
+                  setActiveTab(null);
+                  setSelectedCategoryName(category.name);
+                }}
               >
                 <div className="flex items-center space-x-3">
                   <h2 className="text-lg font-semibold text-gray-800">{category.name}</h2>
@@ -205,15 +258,16 @@ export default function NewsAggregator() {
                     <ExternalLink size={18} />
                   </a>
                   <button
-                    className="p-2 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors duration-200"
-                    onClick={e => {
-                      e.stopPropagation();
-                      // Add your remove category function here
-                      // Example: removeCategory(category.id)
-                    }}
+                    className="p-2 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors duration-200 hover:cursor-pointer"
+                    onClick={e => handleDeleteCategory(category.id.toString(), e)}
+                    disabled={deletingCategoryId === category.id.toString()}
                     title="Remove category"
                   >
-                    <Trash2 size={18} />
+                    {deletingCategoryId === category.id.toString() ? (
+                      <Loader size={18} className="animate-spin text-red-500" />
+                    ) : (
+                      <Trash2 size={18} />
+                    )}
                   </button>
                   <button
                     className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors duration-200"
@@ -264,7 +318,7 @@ export default function NewsAggregator() {
                                 className={`ml-1.5 rounded-full p-0.5 ${
                                   loadingSearchTermId === index
                                     ? "text-gray-400 cursor-not-allowed"
-                                    : "text-blue-500 hover:text-red-500 hover:bg-blue-100 transition-colors duration-200"
+                                    : "text-blue-500 hover:text-red-500 hover:bg-blue-100 transition-colors duration-200 hover:cursor-pointer"
                                 }`}
                                 onClick={() => removeSearchTerm(category.id, index)}
                                 disabled={loadingSearchTermId === index}
@@ -380,9 +434,12 @@ export default function NewsAggregator() {
                     <div className="flex justify-between items-center mt-4">
                       <div className="flex space-x-2">
                         <button
-                          className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors duration-200"
+                          className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors duration-200 hover:cursor-pointer"
                           onClick={() => {
                             /* Add function to manage links */
+                            setSelectedCategoryName(category.name);
+                            setActiveTab("links");
+                            setSelectedCategoryId(category.id);
                           }}
                         >
                           <Link size={14} />
@@ -422,9 +479,13 @@ export default function NewsAggregator() {
         <CategoryManager
           newCategoryName={newCategoryName}
           setNewCategoryName={setNewCategoryName}
-          categories={categories}
           setCategories={setCategories}
           fetchCategories={fetchCategories}
+          setActiveTab={setActiveTab}
+          activeTab={activeTab}
+          selectedCategoryName={selectedCategoryName || ""}
+          selectedCategoryId={selectedCategoryId ?? 0}
+          categories={categories}
         />
 
         {/* Articles Tables */}

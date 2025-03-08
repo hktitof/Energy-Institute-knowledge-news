@@ -5,6 +5,7 @@ export type ApiCategory = {
   CategoryID: number;
   CategoryName: string;
   searchTerms: { SearchTermID: number; Term: string }[];
+  links: { LinkID: number; URL: string; Title?: string | null }[];
 };
 
 export type Article = {
@@ -22,26 +23,42 @@ export interface Category {
   searchTerms: string[];
   articles: Article[];
   showTable: boolean;
-  links?: { url: string; title?: string }[];
+  links: { id: number; url: string; title?: string }[];
 }
 
-//  Function helpers
+// Function helpers
 
-// Fetch categories and search terms from API
-export const fetchCategories = async (
-  // add setCategories to the function signature
-  setCategories: React.Dispatch<React.SetStateAction<Category[]>>
-) => {
+// Fetch categories, search terms, and links from API
+export const fetchCategories = async (setCategories: React.Dispatch<React.SetStateAction<Category[]>>) => {
   axios
     .get<{ categories: ApiCategory[] }>("/api/categories/categories")
     .then(response => {
-      const fetchedCategories = response.data.categories.map(cat => ({
-        id: cat.CategoryID,
-        name: cat.CategoryName,
-        searchTerms: cat.searchTerms.map(term => term.Term),
-        showTable: false, // always false on the client side
-        articles: [], // empty for now
-      }));
+      const fetchedCategories = response.data.categories.map(cat => {
+        // Use a Set to store unique links
+        const uniqueLinks = new Map<number, { id: number; url: string; title?: string }>();
+
+        cat.links.forEach(link => {
+          if (!uniqueLinks.has(link.LinkID)) {
+            uniqueLinks.set(link.LinkID, {
+              id: link.LinkID,
+              url: link.URL,
+              title: link.Title || "", // Handle optional title
+            });
+          }
+        });
+
+        return {
+          id: cat.CategoryID,
+          name: cat.CategoryName,
+          searchTerms: cat.searchTerms.map(term => term.Term),
+          showTable: false, // always false on the client side
+          articles: [], // empty for now
+          links: Array.from(uniqueLinks.values()), // Convert the map back to an array
+        };
+      });
+
+      // print fetched categories from API
+      console.log("Fetched categories:", fetchedCategories);
       setCategories(fetchedCategories);
     })
     .catch(error => {

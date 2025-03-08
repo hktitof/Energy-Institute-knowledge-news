@@ -21,7 +21,8 @@
     "openai": "^4.86.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-feather": "^2.0.10"
+    "react-feather": "^2.0.10",
+    "react-toastify": "^11.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

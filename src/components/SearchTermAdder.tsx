@@ -1,13 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { Plus } from "react-feather"; // adjust import based on your icon library
-interface Category {
-  id: number;
-  name: string;
-  searchTerms: string[];
-  showTable: boolean;
-  articles: DummyArticle[];
-}
+import { Category } from "../types";
 interface DummyArticle {
   id: string;
   title: string;
