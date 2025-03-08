@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import ArticleExtractor from "@/components/ArticleExtractor";
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -29,7 +30,8 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+    <div className=" bg-gray-50 flex flex-col items-center justify-center p-4 ">
+      <ArticleExtractor />
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg p-6">
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Text Summarizer</h1>
 

@@ -14,6 +14,7 @@ import { Category, Article } from "../../utils/utils";
 import { Loader } from "lucide-react";
 import { Trash, Trash2, RefreshCw, Link, Globe } from "lucide-react";
 import { toast } from "react-toastify";
+import { promises as fs } from "fs";
 import CategoryManager from "@/components/CategoryManager";
 import LinkList from "@/components/LinkList";
 
@@ -136,8 +137,7 @@ export default function NewsAggregator() {
   }
 
   const fetchNewsForCategory: FetchNewsForCategory = categoryId => {
-    alert(`Fetching news for category ID ${categoryId}`);
-    // In a real app, this would call an API and update the articles
+    
   };
 
   // Function to fetch all news
@@ -343,12 +343,15 @@ export default function NewsAggregator() {
                           <h3 className="text-sm font-medium text-gray-700">Saved Links</h3>
                           <div className="flex items-center space-x-2">
                             <button
-                              className="text-xs text-gray-500 hover:text-blue-600 flex items-center"
+                              className="text-xs text-gray-500 hover:text-blue-600 flex items-center hover:cursor-pointer"
                               onClick={() => {
                                 /* Function to add new link */
+                                setSelectedCategoryName(category.name);
+                                setActiveTab("links");
+                                setSelectedCategoryId(category.id);
                               }}
                             >
-                              <Plus size={14} className="mr-1" />
+                              <Plus size={14} className="mr-1 " />
                               Add link
                             </button>
                           </div>
@@ -356,36 +359,7 @@ export default function NewsAggregator() {
 
                         {/* Links Grid/List with conditional rendering based on number of links */}
                         {category.links.length <= 5 ? (
-                          // Simple list for few links
-                          // <div className="space-y-2">
-                          //   {category.links.slice(0, 5).map((link, index) => (
-                          //     <a
-                          //       key={index}
-                          //       href={link.url}
-                          //       target="_blank"
-                          //       rel="noopener noreferrer"
-                          //       className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 group"
-                          //     >
-                          //       <div className="flex items-center space-x-2 overflow-hidden">
-                          //         <Globe size={16} className="text-gray-400 flex-shrink-0" />
-                          //         <span className="text-sm text-gray-700 truncate">{link.title || link.url}</span>
-                          //       </div>
-                          //       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          //         <button
-                          //           className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50"
-                          //           onClick={e => {
-                          //             e.preventDefault();
-                          //             // Remove link function
-                          //           }}
-                          //         >
-                          //           <Trash2 size={14} />
-                          //         </button>
-                          //       </div>
-                          //     </a>
-                          //   ))}
-                          // </div>
                           <LinkList
-                            setCategories={setCategories}
                             fetchCategories={fetchCategories}
                             category={category}
                             setCategories={setCategories}
@@ -427,7 +401,14 @@ export default function NewsAggregator() {
                             {category.links.length > 6 && (
                               <div className="flex justify-between items-center text-sm text-gray-500">
                                 <span>Showing 6 of {category.links.length} links</span>
-                                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                <button
+                                  onClick={() => {
+                                    setSelectedCategoryName(category.name);
+                                    setActiveTab("links");
+                                    setSelectedCategoryId(category.id);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:cursor-pointer"
+                                >
                                   View all links
                                 </button>
                               </div>
@@ -455,7 +436,7 @@ export default function NewsAggregator() {
                       </div>
                       <button
                         className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow"
-                        onClick={() => fetchNewsForCategory(category.id)}
+                        onClick={async () => fetchNewsForCategory(category.id)}
                       >
                         <RefreshCw size={14} />
                         <span>Fetch News</span>

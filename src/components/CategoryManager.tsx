@@ -5,6 +5,7 @@ import { fetchCategories } from "@/utils/utils";
 import type { Category } from "@/utils/utils";
 import { Edit, Plus, Trash2, Settings, ExternalLink, Link as LinkIcon, Type } from "lucide-react";
 import { toast } from "react-toastify";
+import LinkForm from "./LinkForm";
 export default function CategoryManager({
   newCategoryName,
   setNewCategoryName,
@@ -230,13 +231,13 @@ export default function CategoryManager({
                                 href={link.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 transition-colors duration-150"
+                                className="text-blue-500 hover:text-blue-900 transition-colors duration-150"
                                 aria-label="Visit link"
                               >
                                 <ExternalLink size={18} />
                               </a>
                               <button
-                                className="text-gray-400 hover:text-red-600 transition-colors duration-150"
+                                className="text-gray-400 hover:text-red-600 transition-colors duration-150 hover:cursor-pointer"
                                 onClick={() => handleDeleteLink(link.id)}
                                 aria-label="Delete link"
                               >
@@ -303,47 +304,11 @@ export default function CategoryManager({
           </div>
 
           {/* Horizontal Add Link Form */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-medium text-gray-700 mb-4">Add New Link</h3>
-
-            <div className="flex flex-wrap gap-4 items-end">
-              <div className="w-full md:w-1/4 lg:w-1/5">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Category</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value={selectedCategoryName}>{selectedCategoryName}</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="w-full md:w-1/3 lg:w-2/5">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Link URL</label>
-                <input
-                  type="url"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://example.com"
-                />
-              </div>
-
-              <div className="w-full md:w-1/4 lg:w-1/5">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Link Title (Optional)</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter title"
-                />
-              </div>
-
-              <div className="md:flex-grow">
-                <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
-                  Add Link
-                </button>
-              </div>
-            </div>
-          </div>
+          <LinkForm
+            categoryId={String(selectedCategoryId)}
+            categoryName={selectedCategoryName}
+            onLinkAdded={() => fetchCategories(setCategories)}
+          />
         </div>
       )}
 

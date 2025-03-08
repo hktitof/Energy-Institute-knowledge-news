@@ -1,6 +1,12 @@
 import React, { useState } from "react";
 
-const LinkForm = ({ categoryId, categoryName, onLinkAdded }) => {
+interface LinkFormProps {
+  categoryId: string;
+  categoryName: string;
+  onLinkAdded: (link: { id: string; categoryId: string; url: string; title: string | null }) => void;
+}
+
+const LinkForm: React.FC<LinkFormProps> = ({ categoryId, categoryName, onLinkAdded }) => {
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -35,7 +41,7 @@ const LinkForm = ({ categoryId, categoryName, onLinkAdded }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/links", {
+      const response = await fetch("/api/links/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
