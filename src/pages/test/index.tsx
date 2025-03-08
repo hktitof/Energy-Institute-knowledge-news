@@ -15,6 +15,7 @@ import { Loader } from "lucide-react";
 import { Trash, Trash2, RefreshCw, Link, Globe } from "lucide-react";
 import { toast } from "react-toastify";
 import CategoryManager from "@/components/CategoryManager";
+import LinkList from "@/components/LinkList";
 
 export default function NewsAggregator() {
   // Declare a state variable called categories and set it to an empty array of Category objects
@@ -356,33 +357,39 @@ export default function NewsAggregator() {
                         {/* Links Grid/List with conditional rendering based on number of links */}
                         {category.links.length <= 5 ? (
                           // Simple list for few links
-                          <div className="space-y-2">
-                            {category.links.slice(0, 5).map((link, index) => (
-                              <a
-                                key={index}
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 group"
-                              >
-                                <div className="flex items-center space-x-2 overflow-hidden">
-                                  <Globe size={16} className="text-gray-400 flex-shrink-0" />
-                                  <span className="text-sm text-gray-700 truncate">{link.title || link.url}</span>
-                                </div>
-                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50"
-                                    onClick={e => {
-                                      e.preventDefault();
-                                      // Remove link function
-                                    }}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </a>
-                            ))}
-                          </div>
+                          // <div className="space-y-2">
+                          //   {category.links.slice(0, 5).map((link, index) => (
+                          //     <a
+                          //       key={index}
+                          //       href={link.url}
+                          //       target="_blank"
+                          //       rel="noopener noreferrer"
+                          //       className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 group"
+                          //     >
+                          //       <div className="flex items-center space-x-2 overflow-hidden">
+                          //         <Globe size={16} className="text-gray-400 flex-shrink-0" />
+                          //         <span className="text-sm text-gray-700 truncate">{link.title || link.url}</span>
+                          //       </div>
+                          //       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          //         <button
+                          //           className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50"
+                          //           onClick={e => {
+                          //             e.preventDefault();
+                          //             // Remove link function
+                          //           }}
+                          //         >
+                          //           <Trash2 size={14} />
+                          //         </button>
+                          //       </div>
+                          //     </a>
+                          //   ))}
+                          // </div>
+                          <LinkList
+                            setCategories={setCategories}
+                            fetchCategories={fetchCategories}
+                            category={category}
+                            setCategories={setCategories}
+                          />
                         ) : (
                           // Grid with pagination for many links
                           <div>

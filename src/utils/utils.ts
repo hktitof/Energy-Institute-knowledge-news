@@ -65,3 +65,43 @@ export const fetchCategories = async (setCategories: React.Dispatch<React.SetSta
       console.error("Error fetching categories:", error);
     });
 };
+
+
+const handleDeleteLink = async (linkId: string) => {
+    // If confirmation dialog is not shown yet, show it first
+    if (showConfirmation !== linkId) {
+      setShowConfirmation(linkId);
+      return;
+    }
+
+    // If confirmed, proceed with deletion
+    try {
+      setDeletingIds(prev => [...prev, linkId]);
+
+      const response = await fetch(`/api/links/delete?linkId=${linkId}`, {
+        method: "DELETE",
+      });
+
+      // print response and mention that from the component name
+      console.log("Response from handleDeleteLink: ", response);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete link");
+      }
+
+      // Success - clear confirmation state and refresh links
+      setShowConfirmation(null);
+      toast.success("Link deleted successfully");
+      fetchCategories(setCategories);
+    } catch (error: unknown) {
+      console.error("Error deleting link:", error);
+      if (error instanceof Error) {
+        toast.error(error.message || "Error deleting link");
+      } else {
+        toast.error("Error deleting link");
+      }
+    } finally {
+      setDeletingIds(prev => prev.filter(id => id !== linkId));
+    }
+  };
