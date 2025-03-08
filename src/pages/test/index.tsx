@@ -136,9 +136,7 @@ export default function NewsAggregator() {
     (categoryId: number): void;
   }
 
-  const fetchNewsForCategory: FetchNewsForCategory = categoryId => {
-    
-  };
+  const fetchNewsForCategory: FetchNewsForCategory = categoryId => {};
 
   // Function to fetch all news
   const fetchAllNews = () => {
@@ -249,7 +247,9 @@ export default function NewsAggregator() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <a
-                    href={`https://news.google.com/search?q=${encodeURIComponent(category.searchTerms.join(" OR "))}`}
+                    href={`https://www.google.co.uk/search?q=${encodeURIComponent(
+                      category.searchTerms.join(" OR ")
+                    )}&tbm=nws&tbs=qdr:w`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-full text-gray-500 hover:bg-blue-50 hover:text-blue-500 transition-colors duration-200"
