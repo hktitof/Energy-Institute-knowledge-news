@@ -11,7 +11,6 @@ export type ApiCategory = {
 export type Article = {
   id: string;
   title: string;
-  content: string;
   summary: string;
   link: string;
   selected: boolean;

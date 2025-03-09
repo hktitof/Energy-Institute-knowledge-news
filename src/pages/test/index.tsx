@@ -136,7 +136,82 @@ export default function NewsAggregator() {
     (categoryId: number): void;
   }
 
-  const fetchNewsForCategory: FetchNewsForCategory = categoryId => {};
+  interface FetchNewsForCategory {
+    (categoryId: number): Promise<Article[]>;
+  }
+
+  interface FetchNewsResponse {
+    articles: Article[];
+  }
+
+  const fetchNewsForCategory: FetchNewsForCategory = async categoryId => {
+    // Get the search terms for the category and assign them to an array
+    const category = categories.find(cat => cat.id === categoryId);
+
+    if (!category) {
+      console.error(`Category with ID ${categoryId} not found`);
+      return [];
+    }
+
+    const searchTerms = category.searchTerms;
+
+    if (!searchTerms.length) {
+      console.warn(`No search terms found for category ${categoryId}`);
+      return [];
+    }
+
+    // Get the google news search URL
+    const searchUrl = `https://www.google.co.uk/search?q=${encodeURIComponent(
+      searchTerms.join(" OR ")
+    )}&tbm=nws&tbs=qdr:w`;
+
+    console.log("Generated search URL:", searchUrl);
+
+    try {
+      // Call our API endpoint with better error handling
+      const encodedUrl = encodeURIComponent(searchUrl);
+      const apiUrl = `/api/category-article-links-scrapper?url=${encodedUrl}`;
+
+      console.log("Calling API endpoint:", apiUrl);
+
+      const response = await fetch(apiUrl);
+
+      // Check for non-JSON responses
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("Received non-JSON response:", await response.text());
+        throw new Error("API returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch news");
+      }
+
+      const data: FetchNewsResponse = await response.json();
+      console.log(`Articles found for category ${category.name}:`, data.articles);
+
+      // push the articles to the category object
+      setCategories(
+        categories.map(cat => {
+          if (cat.id === categoryId) {
+            return {
+              ...cat,
+              articles: data.articles,
+            };
+          }
+          return cat;
+        })
+      );
+
+      
+
+      return data.articles;
+    } catch (error) {
+      console.error("Error fetching news for category:", error);
+      return [];
+    }
+  };
 
   // Function to fetch all news
   const fetchAllNews = () => {
@@ -436,7 +511,11 @@ export default function NewsAggregator() {
                       </div>
                       <button
                         className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow"
-                        onClick={async () => fetchNewsForCategory(category.id)}
+                        onClick={async () => {
+                          await fetchNewsForCategory(category.id);
+                          // print categories list
+                          console.log("clicking on Fetch News : ", categories);
+                        }}
                       >
                         <RefreshCw size={14} />
                         <span>Fetch News</span>
