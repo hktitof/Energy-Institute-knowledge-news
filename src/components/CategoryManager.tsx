@@ -69,7 +69,6 @@ export default function CategoryManager({
       }
     }
     // print that this useEffect is rendering with unique id WW11
-    console.log("useEffect rendering with unique id WW11");
   }, [categories]);
 
   // update links whenever the links state changes
@@ -129,11 +128,6 @@ export default function CategoryManager({
     setShowConfirmation(null);
   };
 
-  // print categories and mention that from the component name
-  console.log("Categories from CategoryManager: ", categories);
-
-  // print links
-  console.log("Links from CategoryManager: ", links);
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-100">
       {/* Tab Navigation */}
@@ -431,4 +425,3 @@ export default function CategoryManager({
     </div>
   );
 }
-

@@ -134,6 +134,7 @@ async function extractAndSummarize(
     }
 
     // Extract all visible text
+    // Extract all visible text
     const textContent = extractAllVisibleText(document);
 
     // Call Azure OpenAI API for summarization with improved prompt
@@ -146,44 +147,92 @@ async function extractAndSummarize(
       return null;
     }
 
-    // Call Azure OpenAI API for summarization
-    const aiResponse = await fetch(
-      `${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": apiKey,
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: `Create a concise summary (maximum ${maxWords} words) of the following article. Focus only on the key information, main arguments, and essential details. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
-    
-    Article title: ${title}
-    Article content: ${textContent}
-    
-    Return your response as a JSON object with this exact format, without any markdown formatting or code blocks:
-    {
-      "title": "The exact article title",
-      "summary": "The concise summary of the article"
-    }
-    
-    IMPORTANT: Return only the raw JSON object, no markdown formatting, no code blocks, no backticks.`,
+    // Implement retry logic with exponential backoff
+    const maxRetries = 5; // Define the maximum number of retries
+    let retries = 0;
+    let aiResponse;
+    let delay = 5000; // Start with 2 second delay
+
+    while (retries <= maxRetries) {
+      try {
+        // Call Azure OpenAI API for summarization
+        aiResponse = await fetch(
+          `${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "api-key": apiKey,
             },
-          ],
-          max_tokens: 800,
-          temperature: 0.3, // Lower temperature for more focused/consistent output
-          response_format: { type: "json_object" }, // Specify JSON response format if the API supports it
-        }),
-      }
-    );
+            body: JSON.stringify({
+              messages: [
+                {
+                  role: "user",
+                  content: `Create a concise summary (maximum ${maxWords} words) of the following article. Focus only on the key information, main arguments, and essential details. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
+        
+        Article title: ${title}
+        Article content: ${textContent}
+        
+        Return your response as a JSON object with this exact format, without any markdown formatting or code blocks:
+        {
+          "title": "The exact article title",
+          "summary": "The concise summary of the article"
+        }
+        
+        IMPORTANT: Return only the raw JSON object, no markdown formatting, no code blocks, no backticks.`,
+                },
+              ],
+              max_tokens: 800,
+              temperature: 0.3,
+              response_format: { type: "json_object" },
+            }),
+          }
+        );
 
-    if (!aiResponse.ok) {
-      return null;
+        // If request succeeded, break out of the retry loop
+        if (aiResponse.ok) {
+          break;
+        }
+
+        // If we get a rate limit error (status 429), retry after delay
+        if (aiResponse.status === 429) {
+          console.log(
+            `Rate limit exceeded (attempt ${retries + 1}/${maxRetries + 1}). Retrying after ${delay / 1000} seconds.`
+          );
+
+          // Extract retry-after header if available, otherwise use our exponential backoff
+          const retryAfter = aiResponse.headers.get("retry-after");
+          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : delay;
+
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          retries++;
+          delay *= 2; // Exponential backoff
+          continue;
+        }
+
+        // If it's not a rate limit error and not successful, throw error
+        throw new Error(`Azure OpenAI API returned status ${aiResponse.status}`);
+      } catch (error) {
+        console.error(`Error calling Azure OpenAI API (attempt ${retries + 1}/${maxRetries + 1}):`, error);
+
+        // If we've reached max retries, throw the error
+        if (retries >= maxRetries) {
+          throw error;
+        }
+
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, delay));
+        retries++;
+        delay *= 2; // Exponential backoff
+      }
     }
 
+    // If we've exhausted all retries without success
+    if (!aiResponse || !aiResponse.ok) {
+      throw new Error("Failed to get response from Azure OpenAI API after multiple retries");
+    }
+
+    // [rest of the function remains the same]
     const aiData = await aiResponse.json();
     const aiOutput = aiData.choices[0].message.content;
 
@@ -251,50 +300,71 @@ async function extractAndSummarize(
 }
 
 // Function to process a list of URLs and return articles with titles and summaries
-async function processUrlList(urls: string[]): Promise<Article[]> {
-  console.log(`Processing ${urls.length} custom URLs`);
+// Process URLs with throttling to avoid rate limits
+async function processUrlList(urls: string[], concurrencyLimit: number = 3): Promise<Article[]> {
+  console.log(`Processing ${urls.length} custom URLs with concurrency limit of ${concurrencyLimit}`);
 
-  // Use Promise.allSettled to fetch all summaries in parallel and continue even if some fail
-  const results = await Promise.allSettled(
-    urls.map(async (url, index) => {
-      console.log(`Processing custom URL ${index + 1}/${urls.length}: ${url}`);
-      try {
-        const result = await extractAndSummarize(url);
+  const articles: Article[] = [];
 
-        if (result) {
+  // Process URLs in batches to control concurrency
+  for (let i = 0; i < urls.length; i += concurrencyLimit) {
+    const batch = urls.slice(i, i + concurrencyLimit);
+    console.log(
+      `Processing batch ${Math.floor(i / concurrencyLimit) + 1}/${Math.ceil(urls.length / concurrencyLimit)}`
+    );
+
+    const batchResults = await Promise.allSettled(
+      batch.map(async (url, batchIndex) => {
+        const index = i + batchIndex;
+        console.log(`Processing custom URL ${index + 1}/${urls.length}: ${url}`);
+
+        try {
+          const result = await extractAndSummarize(url);
+
+          if (result) {
+            return {
+              id: `custom-${index}`,
+              link: url,
+              title: result.title,
+              summary: result.summary,
+              selected: false,
+            };
+          } else {
+            return {
+              id: `custom-${index}`,
+              link: url,
+              title: "Failed to extract",
+              summary: "Could not process this article.",
+              selected: false,
+            };
+          }
+        } catch (error) {
+          console.error(`Error processing URL ${url}:`, error);
           return {
             id: `custom-${index}`,
             link: url,
-            title: result.title,
-            summary: result.summary,
-            selected: false,
-          };
-        } else {
-          return {
-            id: `custom-${index}`,
-            link: url,
-            title: "Failed to extract",
-            summary: "Could not process this article.",
+            title: "Error",
+            summary: "An error occurred while processing this article.",
             selected: false,
           };
         }
-      } catch (error) {
-        console.error(`Error processing URL ${url}:`, error);
-        return {
-          id: `custom-${index}`,
-          link: url,
-          title: "Error",
-          summary: "An error occurred while processing this article.",
-          selected: false,
-        };
-      }
-    })
-  );
+      })
+    );
 
-  // Filter out any failed promises and return successful results
-  return results
-    .filter((result): result is PromiseFulfilledResult<Article> => result.status === "fulfilled")
-    .map(result => result.value);
+    // Add successful results to articles array
+    batchResults.forEach(result => {
+      if (result.status === "fulfilled") {
+        articles.push(result.value);
+      }
+    });
+
+    // Add a short delay between batches to further reduce pressure on the API
+    if (i + concurrencyLimit < urls.length) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+
+  return articles;
 }
 
 export default async function handler(
@@ -308,13 +378,11 @@ export default async function handler(
 
   try {
     let articles: Article[] = [];
-    
+
     // Process Google search URL (can be used in both GET and POST)
     if (req.method === "GET" || (req.method === "POST" && req.body.searchUrl)) {
       const url = req.method === "GET" ? req.query.url : req.body.searchUrl;
-      const processSummaries = req.method === "GET" 
-        ? req.query.processSummaries 
-        : req.body.processSummaries || "true";
+      const processSummaries = req.method === "GET" ? req.query.processSummaries : req.body.processSummaries || "true";
 
       if (!url || typeof url !== "string") {
         return res.status(400).json({ error: "Search URL is required" });
@@ -422,28 +490,61 @@ export default async function handler(
       if (shouldProcessSummaries && articles.length > 0) {
         // Process only the first 20 articles to avoid timeouts
         const articlesToProcess = articles.slice(0, 20);
+        const processedArticles = [];
+        const concurrencyLimit = 1; // Process 3 articles at a time
 
-        // Use Promise.allSettled to fetch all summaries in parallel and continue even if some fail
-        const summaryResults = await Promise.allSettled(
-          articlesToProcess.map(async (article, index) => {
-            console.log(`Processing article ${index + 1}/${articlesToProcess.length}: ${article.link}`);
-            const result = await extractAndSummarize(article.link);
+        // Process articles in batches to control concurrency
+        for (let i = 0; i < articlesToProcess.length; i += concurrencyLimit) {
+          const batch = articlesToProcess.slice(i, i + concurrencyLimit);
+          console.log(
+            `Processing article batch ${Math.floor(i / concurrencyLimit) + 1}/${Math.ceil(
+              articlesToProcess.length / concurrencyLimit
+            )}`
+          );
 
-            if (result) {
-              // Update the article with the title and summary
-              article.title = result.title;
-              article.summary = result.summary;
+          const batchResults = await Promise.allSettled(
+            batch.map(async (article, batchIndex) => {
+              const index = i + batchIndex;
+              console.log(`Processing article ${index + 1}/${articlesToProcess.length}: ${article.link}`);
+
+              try {
+                const result = await extractAndSummarize(article.link);
+
+                if (result) {
+                  // Create a new article with the title and summary
+                  return {
+                    ...article,
+                    title: result.title,
+                    summary: result.summary,
+                  };
+                }
+
+                return article;
+              } catch (error) {
+                console.error(`Error processing article ${article.link}:`, error);
+                return article;
+              }
+            })
+          );
+
+          // Add successful results to processed articles array
+          batchResults.forEach((result, batchIndex) => {
+            if (result.status === "fulfilled") {
+              processedArticles[i + batchIndex] = result.value;
+            } else {
+              processedArticles[i + batchIndex] = articlesToProcess[i + batchIndex];
             }
+          });
 
-            return article;
-          })
-        );
-
-        // Replace the processed articles with their processed versions
-        summaryResults.forEach((result, index) => {
-          if (result.status === "fulfilled") {
-            articles[index] = result.value;
+          // Add a short delay between batches
+          if (i + concurrencyLimit < articlesToProcess.length) {
+            await new Promise(resolve => setTimeout(resolve, 15000));
           }
+        }
+
+        // Update the articles array with the processed articles
+        processedArticles.forEach((article, index) => {
+          articles[index] = article;
         });
 
         console.log(`Processed ${articlesToProcess.length} articles with summaries`);
@@ -454,12 +555,12 @@ export default async function handler(
     if (req.method === "POST" && req.body.urls && Array.isArray(req.body.urls)) {
       // Get the custom URLs from the request
       const customUrls = req.body.urls;
-      
+
       if (customUrls.length > 0) {
         // Process the URL list to get titles and summaries
         const customArticles = await processUrlList(customUrls);
         console.log(`Processed ${customArticles.length} custom URLs`);
-        
+
         // Add the custom articles to the articles array
         articles = [...articles, ...customArticles];
       }

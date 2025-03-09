@@ -23,7 +23,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const rows = (await executeQuery(query)) || [];
-    console.log("Fetched rows:", rows);
 
     interface SearchTerm {
       SearchTermID: number;
