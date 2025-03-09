@@ -25,6 +25,11 @@ interface ErrorResponse {
   success: false;
   error: string;
 }
+interface RequestBody {
+  url: string;
+  maxWords?: number;
+  forwardHeaders?: Record<string, string>;
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -34,7 +39,7 @@ export default async function handler(
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
-  const { url, maxWords = 100 }: RequestBody = req.body;
+  const { url, maxWords = 100, forwardHeaders = {} }: RequestBody = req.body;
 
   if (!url) {
     return res.status(400).json({ success: false, error: "URL is required" });
@@ -45,12 +50,36 @@ export default async function handler(
     // Fetch the HTML content
     const response = await axios.get(url, {
       headers: {
+        // Default headers
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        Connection: "keep-alive",
+        "Cache-Control": "max-age=0",
+        "Sec-Ch-Ua": '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+        // Override with any forwarded headers
       },
+      // Important for some sites
+      withCredentials: true,
+      ...(forwardHeaders.Cookie
+        ? {
+            headers: {
+              ...forwardHeaders,
+              Cookie: forwardHeaders.Cookie,
+            },
+          }
+        : {}),
       timeout: 15000,
+      maxRedirects: 5,
     });
 
     // Parse the HTML using JSDOM
@@ -136,22 +165,22 @@ export default async function handler(
 
     // Get a clean title - try to extract the main title without site name
     const rawTitle = document.title || "";
-    
+
     // Find h1 element which often has the main title
-    const h1Elements = document.querySelectorAll('h1');
-    let mainHeading = '';
-    
+    const h1Elements = document.querySelectorAll("h1");
+    let mainHeading = "";
+
     if (h1Elements.length > 0) {
       // Usually the first h1 is the main title
-      mainHeading = h1Elements[0].textContent?.trim() || '';
+      mainHeading = h1Elements[0].textContent?.trim() || "";
     }
-    
+
     // Choose the best title
     let title = mainHeading || rawTitle;
-    
+
     // Clean up the title - remove site names like "| Site Name" or "- Site Name"
-    title = title.replace(/\s*[|\-–—]\s*[^|\-–—]+$/, '').trim();
-    
+    title = title.replace(/\s*[|\-–—]\s*[^|\-–—]+$/, "").trim();
+
     // If title still has site indicators, try to get just the first part
     if (!title || title.length < 5) {
       title = rawTitle.split(/[|\-–—]/)[0].trim();
@@ -161,7 +190,7 @@ export default async function handler(
     const textContent = extractAllVisibleText(document);
 
     // Step 2: Summarize the extracted content
-    const endpoint = process.env.AZURE_OPENAI_API_BASE?.replace(/\/$/, '');
+    const endpoint = process.env.AZURE_OPENAI_API_BASE?.replace(/\/$/, "");
     const apiKey = process.env.AZURE_OPENAI_API_KEY;
     const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME;
 
@@ -176,15 +205,16 @@ export default async function handler(
     const aiResponse = await fetch(
       `${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'api-key': apiKey,
+          "Content-Type": "application/json",
+          "api-key": apiKey,
         },
         body: JSON.stringify({
-          messages: [{
-            role: 'user',
-            content: `Create a concise summary (maximum ${maxWords} words) of the following article. Focus only on the key information, main arguments, and essential details. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
+          messages: [
+            {
+              role: "user",
+              content: `Create a concise summary (maximum ${maxWords} words) of the following article. Focus only on the key information, main arguments, and essential details. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
 
 Article title: ${title}
 Article content: ${textContent}
@@ -193,8 +223,9 @@ Return your response as a JSON object with this exact format:
 {
   "title": "The exact article title",
   "summary": "The concise summary of the article"
-}`
-          }],
+}`,
+            },
+          ],
           max_tokens: 800,
           temperature: 0.3, // Lower temperature for more focused/consistent output
         }),
@@ -205,13 +236,13 @@ Return your response as a JSON object with this exact format:
       const errorData = await aiResponse.json();
       return res.status(aiResponse.status).json({
         success: false,
-        error: `Azure OpenAI API error: ${errorData.error?.message || 'Unknown error'}`,
+        error: `Azure OpenAI API error: ${errorData.error?.message || "Unknown error"}`,
       });
     }
 
     const aiData = await aiResponse.json();
     const aiOutput = aiData.choices[0].message.content;
-    
+
     // Parse the JSON response
     let jsonOutput;
     try {
@@ -225,7 +256,7 @@ Return your response as a JSON object with this exact format:
       console.error("Failed to parse JSON from API response:", error);
       jsonOutput = {
         title: title,
-        summary: aiOutput.replace(/^.*?summary":\s*"(.*?)"\s*}.*?$/, "$1").trim()
+        summary: aiOutput.replace(/^.*?summary":\s*"(.*?)"\s*}.*?$/, "$1").trim(),
       };
     }
 
@@ -239,8 +270,8 @@ Return your response as a JSON object with this exact format:
       contentLength: textContent.length,
       jsonOutput: {
         title: jsonOutput.title,
-        summary: jsonOutput.summary
-      }
+        summary: jsonOutput.summary,
+      },
     });
   } catch (error) {
     console.error("Error processing request:", error);

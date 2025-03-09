@@ -144,9 +144,29 @@ export default function NewsAggregator() {
     articles: Article[];
   }
 
+  const extractSummary = (rawSummary: string): string => {
+    if (rawSummary.startsWith("```json")) {
+      // Remove the code fence and trim extra whitespace
+      const cleaned = rawSummary.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      try {
+        const parsed = JSON.parse(cleaned);
+        return parsed.summary || rawSummary;
+      } catch (error) {
+        console.error("Error parsing summary JSON:", error);
+        return rawSummary;
+      }
+    }
+    return rawSummary;
+  };
+
   const fetchNewsForCategory: FetchNewsForCategory = async categoryId => {
-    // Get the search terms for the category and assign them to an array
     const category = categories.find(cat => cat.id === categoryId);
+
+    // print to the console that we are fetching news for the category
+    if (category) {
+      console.log(`Fetching news for category ${category.name}`);
+    }
+    // Get the search terms for the category and assign them to an array
 
     if (!category) {
       console.error(`Category with ID ${categoryId} not found`);
@@ -170,7 +190,8 @@ export default function NewsAggregator() {
     try {
       // Call our API endpoint with better error handling
       const encodedUrl = encodeURIComponent(searchUrl);
-      const apiUrl = `/api/category-article-links-scrapper?url=${encodedUrl}`;
+      // Add processSummaries=true to get article titles and summaries
+      const apiUrl = `/api/category-article-links-scrapper?url=${encodedUrl}&processSummaries=true`;
 
       console.log("Calling API endpoint:", apiUrl);
 
@@ -191,21 +212,26 @@ export default function NewsAggregator() {
       const data: FetchNewsResponse = await response.json();
       console.log(`Articles found for category ${category.name}:`, data.articles);
 
-      // push the articles to the category object
+      // update the categories state with the new articles, expecting, from data.articles to be an array of objects, that has id,link,title,summary,selected for my table, it might have empty array, so I will check if it is empty, I will return an empty array, or empty title in the object, so do the checking for the values in the object
+      if (data.articles.length === 0 || data.articles[0].title === "") {
+        return [];
+      }
       setCategories(
         categories.map(cat => {
           if (cat.id === categoryId) {
             return {
               ...cat,
-              articles: data.articles,
+              isFetchingNewArticles: false,
+              articles: data.articles.map(article => ({
+                ...article,
+                summary: extractSummary(article.summary),
+                selected: false,
+              })),
             };
           }
           return cat;
         })
       );
-
-      
-
       return data.articles;
     } catch (error) {
       console.error("Error fetching news for category:", error);
@@ -510,15 +536,22 @@ export default function NewsAggregator() {
                         </button>
                       </div>
                       <button
-                        className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow hover:cursor-pointer"
+                        disabled={category.isFetchingNewArticles}
                         onClick={async () => {
+                          // set isFetchingNewArticles to true for this category, loop in categories and set isFetchingNewArticles to true for this category id
+                          setCategories(
+                            categories.map(cat =>
+                              cat.id === category.id ? { ...cat, isFetchingNewArticles: true } : cat
+                            )
+                          );
                           await fetchNewsForCategory(category.id);
                           // print categories list
-                          console.log("clicking on Fetch News : ", categories);
+                          // console.log("clicking on Fetch News : ", categories);
                         }}
                       >
-                        <RefreshCw size={14} />
-                        <span>Fetch News</span>
+                        {category.isFetchingNewArticles ? <Loader size={14} /> : <RefreshCw size={14} />}
+                        {category.isFetchingNewArticles ? <span>Fetching...</span> : <span>Fetch News</span>}
                       </button>
                     </div>
                   </motion.div>

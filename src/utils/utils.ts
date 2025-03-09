@@ -22,8 +22,25 @@ export interface Category {
   searchTerms: string[];
   articles: Article[];
   showTable: boolean;
+  isFetchingNewArticles?: boolean;
   links: { id: number; url: string; title?: string }[];
 }
+
+// Helper function to extract the summary from markdown JSON
+const extractSummary = (rawSummary: string): string => {
+  if (rawSummary.startsWith("```json")) {
+    // Remove the code fence and trim extra whitespace
+    const cleaned = rawSummary.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+    try {
+      const parsed = JSON.parse(cleaned);
+      return parsed.summary || rawSummary;
+    } catch (error) {
+      console.error("Error parsing summary JSON:", error);
+      return rawSummary;
+    }
+  }
+  return rawSummary;
+};
 
 // Function helpers
 

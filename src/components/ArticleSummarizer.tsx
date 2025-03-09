@@ -50,6 +50,17 @@ const ArticleSummarizer = () => {
       const response = await axios.post<ApiResponse>("/api/extract-and-summarize", {
         url,
         maxWords,
+        forwardHeaders: {
+          "User-Agent": navigator.userAgent,
+          Referer: "https://pubs.acs.org/", // Pretend we're coming from their site
+          Origin: "https://pubs.acs.org",
+          "Sec-Fetch-Site": "same-origin",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
       });
 
       if (response.data.success) {
