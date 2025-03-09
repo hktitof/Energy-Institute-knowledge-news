@@ -1,4 +1,3 @@
-// pages/api/category-article-links-scrapper.ts
 import axios from "axios";
 import { load } from "cheerio";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -251,163 +250,230 @@ async function extractAndSummarize(
   }
 }
 
+// Function to process a list of URLs and return articles with titles and summaries
+async function processUrlList(urls: string[]): Promise<Article[]> {
+  console.log(`Processing ${urls.length} custom URLs`);
+
+  // Use Promise.allSettled to fetch all summaries in parallel and continue even if some fail
+  const results = await Promise.allSettled(
+    urls.map(async (url, index) => {
+      console.log(`Processing custom URL ${index + 1}/${urls.length}: ${url}`);
+      try {
+        const result = await extractAndSummarize(url);
+
+        if (result) {
+          return {
+            id: `custom-${index}`,
+            link: url,
+            title: result.title,
+            summary: result.summary,
+            selected: false,
+          };
+        } else {
+          return {
+            id: `custom-${index}`,
+            link: url,
+            title: "Failed to extract",
+            summary: "Could not process this article.",
+            selected: false,
+          };
+        }
+      } catch (error) {
+        console.error(`Error processing URL ${url}:`, error);
+        return {
+          id: `custom-${index}`,
+          link: url,
+          title: "Error",
+          summary: "An error occurred while processing this article.",
+          selected: false,
+        };
+      }
+    })
+  );
+
+  // Filter out any failed promises and return successful results
+  return results
+    .filter((result): result is PromiseFulfilledResult<Article> => result.status === "fulfilled")
+    .map(result => result.value);
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<NewsResponse | ErrorResponse>
 ): Promise<void> {
-  // Only allow GET requests
-  if (req.method !== "GET") {
+  // Only allow GET and POST requests
+  if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { url, processSummaries } = req.query;
-
-  if (!url || typeof url !== "string") {
-    return res.status(400).json({ error: "Search URL is required" });
-  }
-
   try {
-    // Add some logging to debug
-    console.log("Attempting to fetch URL:", url);
+    let articles: Article[] = [];
+    
+    // Process Google search URL (can be used in both GET and POST)
+    if (req.method === "GET" || (req.method === "POST" && req.body.searchUrl)) {
+      const url = req.method === "GET" ? req.query.url : req.body.searchUrl;
+      const processSummaries = req.method === "GET" 
+        ? req.query.processSummaries 
+        : req.body.processSummaries || "true";
 
-    // Fetch the Google News search results page with additional safeguards
-    const response = await axios.get(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      timeout: 10000, // 10 second timeout
-      validateStatus: status => status < 500, // Only treat 500+ as errors
-    });
+      if (!url || typeof url !== "string") {
+        return res.status(400).json({ error: "Search URL is required" });
+      }
 
-    // Check if we got a valid response
-    if (response.status !== 200) {
-      console.error("Non-200 status from Google:", response.status);
-      return res.status(response.status).json({
-        error: "Failed to fetch from Google",
-        details: `Status code: ${response.status}`,
-      });
-    }
+      // Add some logging to debug
+      console.log("Attempting to fetch URL:", url);
 
-    // Validate we actually got HTML content
-    const contentType = response.headers["content-type"] || "";
-    if (!contentType.includes("html")) {
-      console.error("Unexpected content type:", contentType);
-      return res.status(400).json({
-        error: "Unexpected content type from Google",
-        details: contentType,
-      });
-    }
-
-    // Parse the HTML response with cheerio
-    const $ = load(response.data);
-    const articles: Article[] = [];
-
-    // Log a sample of the HTML to debug
-    console.log("HTML sample:", response.data.substring(0, 200) + "...");
-
-    // Try different selectors for Google News articles
-    const selectors = [
-      "div.SoaBEf a", // Your original selector
-      "div.WlydOe a", // Alternative selector
-      "div.v7W49e a", // Another alternative
-      "g-card a", // Fallback
-    ];
-
-    let foundArticles = false;
-
-    for (const selector of selectors) {
-      $(selector).each((index: number, element: cheerio.Element) => {
-        const href: string | undefined = $(element).attr("href");
-        if (href && href.startsWith("http") && !href.includes("google.com")) {
-          articles.push({
-            id: index.toString(),
-            link: href,
-            title: "",
-            summary: "",
-            selected: false,
-          });
-          foundArticles = true;
-        }
+      // Fetch the Google News search results page with additional safeguards
+      const response = await axios.get(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        timeout: 10000, // 10 second timeout
+        validateStatus: status => status < 500, // Only treat 500+ as errors
       });
 
-      if (foundArticles) break;
-    }
+      // Check if we got a valid response
+      if (response.status !== 200) {
+        console.error("Non-200 status from Google:", response.status);
+        return res.status(response.status).json({
+          error: "Failed to fetch from Google",
+          details: `Status code: ${response.status}`,
+        });
+      }
 
-    // If no articles found with any selector, try a more generic approach
-    if (articles.length === 0) {
-      $("a").each((index: number, element: cheerio.Element) => {
-        const href: string | undefined = $(element).attr("href");
-        if (
-          href &&
-          href.startsWith("http") &&
-          !href.includes("google.com") &&
-          !href.includes("gstatic.com") &&
-          !href.includes("googleapis.com")
-        ) {
-          articles.push({
-            id: index.toString(),
-            link: href,
-            title: "",
-            summary: "",
-            selected: false,
-          });
-        }
-      });
-    }
+      // Validate we actually got HTML content
+      const contentType = response.headers["content-type"] || "";
+      if (!contentType.includes("html")) {
+        console.error("Unexpected content type:", contentType);
+        return res.status(400).json({
+          error: "Unexpected content type from Google",
+          details: contentType,
+        });
+      }
 
-    // Remove duplicates
-    const uniqueArticles = articles.filter(
-      (article, index, self) => index === self.findIndex(a => a.link === article.link)
-    );
+      // Parse the HTML response with cheerio
+      const $ = load(response.data);
 
-    console.log(`Found ${uniqueArticles.length} unique articles`);
+      // Log a sample of the HTML to debug
+      // console.log("HTML sample:", response.data.substring(0, 200) + "...");
 
-    // Check if summaries should be processed
-    const shouldProcessSummaries = processSummaries === "true";
+      // Try different selectors for Google News articles
+      const selectors = [
+        "div.SoaBEf a", // Your original selector
+        "div.WlydOe a", // Alternative selector
+        "div.v7W49e a", // Another alternative
+        "g-card a", // Fallback
+      ];
 
-    // If requested, fetch titles and summaries for each article (limit to 5 to prevent timeout)
-    if (shouldProcessSummaries && uniqueArticles.length > 0) {
-      // Process only the first 5 articles to avoid timeouts
-      const articlesToProcess = uniqueArticles.slice(0, 20);
+      let foundArticles = false;
 
-      // Use Promise.allSettled to fetch all summaries in parallel and continue even if some fail
-      const summaryResults = await Promise.allSettled(
-        articlesToProcess.map(async (article, index) => {
-          console.log(`Processing article ${index + 1}/${articlesToProcess.length}: ${article.link}`);
-          const result = await extractAndSummarize(article.link);
-
-          if (result) {
-            // Update the article with the title and summary
-            article.title = result.title;
-            article.summary = result.summary;
+      for (const selector of selectors) {
+        $(selector).each((index: number, element: cheerio.Element) => {
+          const href: string | undefined = $(element).attr("href");
+          if (href && href.startsWith("http") && !href.includes("google.com")) {
+            articles.push({
+              id: index.toString(),
+              link: href,
+              title: "",
+              summary: "",
+              selected: false,
+            });
+            foundArticles = true;
           }
+        });
 
-          return article;
-        })
-      );
+        if (foundArticles) break;
+      }
 
-      // Replace the first 5 articles with their processed versions
-      summaryResults.forEach((result, index) => {
-        if (result.status === "fulfilled") {
-          uniqueArticles[index] = result.value;
-        }
-      });
+      // If no articles found with any selector, try a more generic approach
+      if (articles.length === 0) {
+        $("a").each((index: number, element: cheerio.Element) => {
+          const href: string | undefined = $(element).attr("href");
+          if (
+            href &&
+            href.startsWith("http") &&
+            !href.includes("google.com") &&
+            !href.includes("gstatic.com") &&
+            !href.includes("googleapis.com")
+          ) {
+            articles.push({
+              id: index.toString(),
+              link: href,
+              title: "",
+              summary: "",
+              selected: false,
+            });
+          }
+        });
+      }
 
-      console.log(`Processed ${articlesToProcess.length} articles with summaries`);
+      // Remove duplicates
+      articles = articles.filter((article, index, self) => index === self.findIndex(a => a.link === article.link));
+
+      console.log(`Found ${articles.length} unique articles from Google`);
+
+      // Check if summaries should be processed
+      const shouldProcessSummaries = processSummaries === "true";
+
+      // If requested, fetch titles and summaries for each article (limit to avoid timeout)
+      if (shouldProcessSummaries && articles.length > 0) {
+        // Process only the first 20 articles to avoid timeouts
+        const articlesToProcess = articles.slice(0, 20);
+
+        // Use Promise.allSettled to fetch all summaries in parallel and continue even if some fail
+        const summaryResults = await Promise.allSettled(
+          articlesToProcess.map(async (article, index) => {
+            console.log(`Processing article ${index + 1}/${articlesToProcess.length}: ${article.link}`);
+            const result = await extractAndSummarize(article.link);
+
+            if (result) {
+              // Update the article with the title and summary
+              article.title = result.title;
+              article.summary = result.summary;
+            }
+
+            return article;
+          })
+        );
+
+        // Replace the processed articles with their processed versions
+        summaryResults.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            articles[index] = result.value;
+          }
+        });
+
+        console.log(`Processed ${articlesToProcess.length} articles with summaries`);
+      }
+    }
+
+    // Process direct URLs (only in POST)
+    if (req.method === "POST" && req.body.urls && Array.isArray(req.body.urls)) {
+      // Get the custom URLs from the request
+      const customUrls = req.body.urls;
+      
+      if (customUrls.length > 0) {
+        // Process the URL list to get titles and summaries
+        const customArticles = await processUrlList(customUrls);
+        console.log(`Processed ${customArticles.length} custom URLs`);
+        
+        // Add the custom articles to the articles array
+        articles = [...articles, ...customArticles];
+      }
     }
 
     // Return the results
     return res.status(200).json({
-      articles: uniqueArticles,
+      articles: articles,
     });
   } catch (error) {
-    console.error("Error fetching news:", error);
+    console.error("Error fetching or processing articles:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
     return res.status(500).json({
-      error: "Failed to fetch news articles",
+      error: "Failed to fetch or process articles",
       details: errorMessage,
     });
   }

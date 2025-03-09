@@ -161,11 +161,8 @@ export default function NewsAggregator() {
 
   // Function to fetch news for a category (would be replaced with actual API call)
   interface FetchNewsForCategory {
-    (categoryId: number): void;
-  }
-
-  interface FetchNewsForCategory {
-    (categoryId: number): Promise<Article[]>;
+    // this function will receive categoryId and customLinks as parameters, and they are array of urls
+    (categoryId: number, customLinks?: string[]): Promise<Article[]>;
   }
 
   interface FetchNewsResponse {
@@ -187,15 +184,15 @@ export default function NewsAggregator() {
     return rawSummary;
   };
 
-  const fetchNewsForCategory: FetchNewsForCategory = async categoryId => {
+  const fetchNewsForCategory: FetchNewsForCategory = async (categoryId, customLinks = []) => {
     const category = categories.find(cat => cat.id === categoryId);
 
     // print to the console that we are fetching news for the category
     if (category) {
       console.log(`Fetching news for category ${category.name}`);
     }
-    // Get the search terms for the category and assign them to an array
 
+    // Get the search terms for the category and assign them to an array
     if (!category) {
       console.error(`Category with ID ${categoryId} not found`);
       return [];
@@ -203,28 +200,58 @@ export default function NewsAggregator() {
 
     const searchTerms = category.searchTerms;
 
-    if (!searchTerms.length) {
-      console.warn(`No search terms found for category ${categoryId}`);
+    if (!searchTerms.length && !customLinks.length) {
+      console.warn(`No search terms or custom links found for category ${categoryId}`);
       return [];
     }
 
-    // Get the google news search URL
-    const searchUrl = `https://www.google.co.uk/search?q=${encodeURIComponent(
-      searchTerms.join(" OR ")
-    )}&tbm=nws&tbs=qdr:w`;
-
-    console.log("Generated search URL:", searchUrl);
+    // Set isFetchingNewArticles to true for this category
+    setCategories(categories.map(cat => (cat.id === categoryId ? { ...cat, isFetchingNewArticles: true } : cat)));
 
     try {
-      // Call our API endpoint with better error handling
-      const encodedUrl = encodeURIComponent(searchUrl);
-      // Add processSummaries=true to get article titles and summaries
-      const apiUrl = `/api/category-article-links-scrapper?url=${encodedUrl}&processSummaries=true`;
+      let apiUrl = "/api/category-article-links-scrapper";
+      let fetchOptions: RequestInit = {};
 
-      // set isFetchingNewArticles to true for this category
-      setCategories(categories.map(cat => (cat.id === categoryId ? { ...cat, isFetchingNewArticles: true } : cat)));
+      // If we have search terms, create a Google search URL
+      if (searchTerms.length > 0) {
+        // Get the google news search URL
+        const searchUrl = `https://www.google.co.uk/search?q=${encodeURIComponent(
+          searchTerms.join(" OR ")
+        )}&tbm=nws&tbs=qdr:w`;
 
-      const response = await fetch(apiUrl);
+        console.log("Generated search URL:", searchUrl);
+
+        if (customLinks.length > 0) {
+          // If we have both search terms and custom links, use POST with both
+          fetchOptions = {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              searchUrl: searchUrl,
+              processSummaries: "true",
+              urls: customLinks,
+            }),
+          };
+        } else {
+          // If we only have search terms, use GET
+          const encodedUrl = encodeURIComponent(searchUrl);
+          apiUrl = `${apiUrl}?url=${encodedUrl}&processSummaries=true`;
+        }
+      } else if (customLinks.length > 0) {
+        // If we only have custom links, use POST with urls only
+        fetchOptions = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ urls: customLinks }),
+        };
+      }
+
+      // Make the API request
+      const response = await fetch(apiUrl, fetchOptions);
 
       // Check for non-JSON responses
       const contentType = response.headers.get("content-type");
@@ -241,12 +268,21 @@ export default function NewsAggregator() {
       const data: FetchNewsResponse = await response.json();
       console.log(`Articles found for category ${category.name}:`, data.articles);
 
-      // update the categories state with the new articles, expecting, from data.articles to be an array of objects, that has id,link,title,summary,selected for my table, it might have empty array, so I will check if it is empty, I will return an empty array, or empty title in the object, so do the checking for the values in the object
+      // update the categories state with the new articles
       if (data.articles.length === 0 || data.articles[0].title === "") {
+        setCategories(prevCategories => {
+          return prevCategories.map(cat => {
+            if (cat.id === categoryId) {
+              return {
+                ...cat,
+                isFetchingNewArticles: false,
+              };
+            }
+            return cat;
+          });
+        });
         return [];
       }
-
-      
 
       // update setCategories by adding the new articles to the existing articles
       setCategories(prevCategories => {
@@ -270,29 +306,42 @@ export default function NewsAggregator() {
         });
       });
 
-      // fix the order id of articles inside the articles array, it should be [{id:0, ...},{id:1, ...},{id:2, ...},...]
+      // fix the order id of articles inside the articles array
       setCategories(prevCategories => {
-              return prevCategories.map(cat => {
-                if (cat.id === categoryId) {
-                  return {
-                    ...cat,
-                    articles: cat.articles.map((article, index) => ({
-                      ...article,
-                      id: index.toString(),
-                    })),
-                  };
-                }
-                return cat;
-              });
-            })
+        return prevCategories.map(cat => {
+          if (cat.id === categoryId) {
+            return {
+              ...cat,
+              articles: cat.articles.map((article, index) => ({
+                ...article,
+                id: index.toString(),
+              })),
+            };
+          }
+          return cat;
+        });
+      });
 
       return data.articles;
     } catch (error) {
       console.error("Error fetching news for category:", error);
+
+      // Make sure to set isFetchingNewArticles back to false in case of error
+      setCategories(prevCategories => {
+        return prevCategories.map(cat => {
+          if (cat.id === categoryId) {
+            return {
+              ...cat,
+              isFetchingNewArticles: false,
+            };
+          }
+          return cat;
+        });
+      });
+
       return [];
     }
   };
-
   // Function to fetch all news
   const fetchAllNews = () => {
     alert("Fetching news for all categories");
@@ -359,126 +408,218 @@ export default function NewsAggregator() {
     }
   };
 
-  const refetchArticles = async (categoryId: number) => {
-    // get category using categoryId
+  interface RefetchArticlesParams {
+    categoryId: number;
+  }
+
+  interface ArticleToFetch {
+    link: string;
+  }
+
+  interface FetchArticlesResponse {
+    results: Array<{
+      url: string;
+      title: string;
+      summary: string;
+    }>;
+  }
+
+  const refetchArticles = async ({ categoryId }: RefetchArticlesParams): Promise<void> => {
     const category = categories.find(cat => cat.id === categoryId);
 
-    // print category is not defined if category is not found
     if (!category) {
-      console.error("Category is not defined");
+      console.error(`Category with ID ${categoryId} not found`);
       return;
     }
 
-    // Count how many articles are fetched
-    const fetchedArticles = category.articles.filter(article => article.title !== "");
-    // Count how many articles are not fetched
-    const notFetchedArticles = category.articles.filter(article => article.summary === "");
+    // Get articles with empty titles or summaries (these need fetching)
+    const articlesToFetch: ArticleToFetch[] = category.articles.filter(
+      article => article.title === "" || article.summary === ""
+    );
 
-    if (notFetchedArticles.length > 0) {
-      // Get the links to the articles that are not fetched
-      const notFetchedLinks = notFetchedArticles.map(article => article.link);
-      console.log("Not fetched links:", notFetchedLinks);
+    // Early return if no articles need fetching
+    if (articlesToFetch.length === 0) {
+      console.log("All articles are already fetched for this category");
 
-      try {
-        // Call your API to fetch titles and summaries using axios
-        const response = await axios.post("/api/title-summaries-by-links", {
-          links: notFetchedLinks, // This sends an array of strings which is correct
-          maxConcurrent: 5,
-          maxWords: 100,
-        });
+      // Update states once
+      const categoriesUpdates = categories.map(cat =>
+        cat.id === categoryId ? { ...cat, isFetchingNewArticles: false } : cat
+      );
 
-        // Axios automatically throws for error status codes, so no need to check response.ok
-        const data = response.data;
+      const statusUpdates = categoriesStatus.map(status =>
+        status.categoryId === categoryId ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true } : status
+      );
 
-        // Update the articles with the fetched data
-        const updatedArticles = category.articles.map(article => {
-          if (article.title === "") {
-            // Find the matching result from our API
-            const matchingResult: { title: string; summary: string; url: string } | undefined = data.results.find(
-              (result: { url: string }) => result.url === article.link
-            );
-            if (matchingResult) {
-              return {
-                ...article,
-                title: matchingResult.title || "",
-                summary: matchingResult.summary || "",
-              };
-            }
+      // Batch state updates to reduce re-renders
+      setCategories(categoriesUpdates);
+      setTimeout(() => {
+        setCategoriesStatus(statusUpdates);
+      }, 0);
+
+      return;
+    }
+
+    // Get the links to the articles that need fetching
+    const linksToFetch = articlesToFetch.map(article => article.link);
+    console.log(`Fetching ${linksToFetch.length} articles for category ${category.name}`);
+
+    try {
+      // Call API to fetch titles and summaries
+      const response = await axios.post<FetchArticlesResponse>("/api/title-summaries-by-links", {
+        links: linksToFetch,
+        maxConcurrent: 5,
+        maxWords: 100,
+      });
+
+      const data = response.data;
+
+      // Update the articles with the fetched data
+      const updatedArticles = category.articles.map(article => {
+        if (article.title === "" || article.summary === "") {
+          // Find the matching result from our API
+          const matchingResult = data.results.find(result => result.url === article.link);
+
+          if (matchingResult) {
+            return {
+              ...article,
+              title: matchingResult.title || "",
+              summary: matchingResult.summary || "",
+            };
           }
-          return article;
-        });
+        }
+        return article;
+      });
 
-        // Update the category with the updated articles
-        setCategories(
-          categories.map(cat =>
-            cat.id === category.id ? { ...cat, articles: updatedArticles, isFetchingNewArticles: false } : cat
-          )
-        );
-        // set refetch news button text back to News Fetched
-        refFetchNews.current!.innerText = "Fetched";
-      } catch (error) {
-        console.error("Error fetching article details:", error);
-        // Set isFetchingNewArticles back to false
-        setCategories(categories.map(cat => (cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat)));
-      }
-    } else {
-      // print all articles are fetched!!
-      console.log("All articles are fetched!!");
-      // No articles need fetching
-      setCategories(categories.map(cat => (cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat)));
+      // Prepare updates for both states
+      const categoriesUpdates = categories.map(cat =>
+        cat.id === categoryId ? { ...cat, articles: updatedArticles, isFetchingNewArticles: false } : cat
+      );
 
-      // set setCategoryStatus to true for this category id, within the categoriesStatus array
-      setCategoriesStatus(prevStatus =>
-        prevStatus.map(status =>
+      const statusUpdates = categoriesStatus.map(status =>
+        status.categoryId === categoryId ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true } : status
+      );
+
+      // Batch state updates to reduce re-renders
+      setCategories(categoriesUpdates);
+      setTimeout(() => {
+        setCategoriesStatus(statusUpdates);
+      }, 0);
+
+      // set isFetchedAllArticles to true for this category
+      setCategoriesStatus(prevStatus => {
+        return prevStatus.map(status =>
           status.categoryId === categoryId
             ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true }
             : status
-        )
+        );
+      });
+
+      // Update the refFetchNews button text if it exists
+      if (refFetchNews.current) {
+        refFetchNews.current.innerText = "Fetched";
+      }
+    } catch (error) {
+      console.error("Error fetching article details:", error);
+
+      // Prepare updates for both states
+      const categoriesUpdates = categories.map(cat =>
+        cat.id === categoryId ? { ...cat, isFetchingNewArticles: false } : cat
       );
+
+      const statusUpdates = categoriesStatus.map(status =>
+        status.categoryId === categoryId ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true } : status
+      );
+
+      // Batch state updates to reduce re-renders
+      setCategories(categoriesUpdates);
+      setTimeout(() => {
+        setCategoriesStatus(statusUpdates);
+      }, 0);
     }
   };
 
   // create a useEffect that will track whenever isFetchingArticles is true, for a category, and if it it is true, it will perform a refetchArticles for that category if only is FetchedAllArticles is false
   useEffect(() => {
+    const shouldFetchArticles = categoriesStatus.some(
+      status => status.isFetchingArticles && !status.isFetchedAllArticles
+    );
+
+    if (!shouldFetchArticles) {
+      return; // Early return if nothing to fetch
+    }
+
+    let isCurrentlyFetching = false;
+
     const fetchArticles = async () => {
-      if (categoriesStatus.some(status => status.isFetchingArticles && !status.isFetchedAllArticles)) {
-        const category = categories.find(
-          cat => cat.id === categoriesStatus.find(status => status.isFetchingArticles)?.categoryId
-        );
-        if (category) {
-          await refetchArticles(category.id);
+      if (isCurrentlyFetching) return;
+
+      isCurrentlyFetching = true;
+
+      // Find the first category that needs refetching
+      const categoryStatusToFetch = categoriesStatus.find(
+        status => status.isFetchingArticles && !status.isFetchedAllArticles
+      );
+
+      if (categoryStatusToFetch) {
+        const categoryToFetch = categories.find(cat => cat.id === categoryStatusToFetch.categoryId);
+
+        if (categoryToFetch) {
+          console.log(`Refetching articles for category: ${categoryToFetch.name}`);
+          await refetchArticles({ categoryId: categoryToFetch.id });
         }
       }
-      // print refetching articles, is performed by a useEffect
-      console.log("Refetching articles, useEffect!!");
+
+      isCurrentlyFetching = false;
     };
 
-    // print that we are calling this useEffect
-    console.log("Calling useEffect!!");
     fetchArticles();
 
-    // fetchArticles();
-  }, [categoriesStatus]);
+    // Add dependencies that actually matter, not the entire objects
+  }, [categoriesStatus.map(s => `${s.categoryId}-${s.isFetchingArticles}-${s.isFetchedAllArticles}`).join(",")]);
 
   // create a useEffect that will track when a link has been added to a category, so then it will added to the article array of the category, so the article array if have no article, then it will have a new article with id 1 and empty title, summary, but with the link added from the category links array, it should only run when a new link is added to a category
+  // Modify the useEffect that adds links to articles
   useEffect(() => {
     const addLinkToArticles = () => {
       const category = categories.find(cat => cat.id === selectedCategoryId);
-      if (category) {
-        if (category.links.length > 0) {
-          const newArticles = category.links.map((link, index) => ({
-            id: (index + 1).toString(),
-            title: "",
-            summary: "",
-            link: link.url,
-            selected: false,
-          }));
-          setCategories(
-            categories.map(cat => (cat.id === selectedCategoryId ? { ...cat, articles: newArticles } : cat))
-          );
+      if (category && category.links.length > 0) {
+        const newArticles = category.links.map((link, index) => ({
+          id: (index + 1).toString(),
+          title: "",
+          summary: "",
+          link: link.url,
+          selected: false,
+        }));
+
+        setCategories(categories.map(cat => (cat.id === selectedCategoryId ? { ...cat, articles: newArticles } : cat)));
+
+        // Mark this category for fetching by updating categoriesStatus
+        if (selectedCategoryId !== null) {
+          setCategoriesStatus(prevStatus => {
+            // Check if this category already exists in the status array
+            const existingStatus = prevStatus.find(status => status.categoryId === selectedCategoryId);
+
+            if (existingStatus) {
+              // Update the existing entry
+              return prevStatus.map(status =>
+                status.categoryId === selectedCategoryId
+                  ? { ...status, isFetchingArticles: true, isFetchedAllArticles: false }
+                  : status
+              );
+            } else {
+              // Add a new entry for this category
+              return [
+                ...prevStatus,
+                {
+                  categoryId: selectedCategoryId,
+                  isFetchingArticles: true,
+                  isFetchedAllArticles: false,
+                },
+              ];
+            }
+          });
         }
       }
-      // print adding link to articles, is performed by a useEffect
       console.log("Adding link to articles, useEffect!!");
     };
 
@@ -488,6 +629,8 @@ export default function NewsAggregator() {
   // print categories
   console.log("categories :", categories);
 
+  // print categoriesStatus
+  console.log("categoriesStatus :", categoriesStatus);
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Left sidebar with categories */}
@@ -537,6 +680,12 @@ export default function NewsAggregator() {
                   >
                     <ExternalLink size={18} />
                   </a>
+                  {/* add a checked icon if isFetchedAllArticles of categoriesStatus for this category is is true */}
+                  {categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles && (
+                    <span className="p-2 rounded-full text-green-500 bg-green-50">
+                      <RefreshCw size={18} />
+                    </span>
+                  )}
                   <button
                     className="p-2 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors duration-200 hover:cursor-pointer"
                     onClick={e => handleDeleteCategory(category.id.toString(), e)}
@@ -713,28 +862,61 @@ export default function NewsAggregator() {
                           <span>Manage Links</span>
                         </button>
                       </div>
-                      <button
-                        className={`bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow ${
-                          category.isFetchingNewArticles ? "opacity-50 hover:cursor-wait" : "hover:cursor-pointer" // disable the button if isFetchingNewArticles is true
-                        } 
+                      {categoriesStatus.find(status => status.categoryId === category.id)?.isFetchingArticles ? (
+                        categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles ? (
+                          <span className="text-sm text-gray-600">Re-fetching...</span>
+                        ) : (
+                          <RefreshCw size={14} />
+                        )
+                      ) : (
+                        <button
+                          className={`bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow ${
+                            category.isFetchingNewArticles ? "opacity-50 hover:cursor-wait" : "hover:cursor-pointer" // disable the button if isFetchingNewArticles is true
+                          } 
                         `}
-                        disabled={category.isFetchingNewArticles}
-                        onClick={async () => {
-                          // Set isFetchingNewArticles to true for this category
-                          setCategories(
-                            categories.map(cat =>
-                              cat.id === category.id ? { ...cat, isFetchingNewArticles: true } : cat
-                            )
-                          );
+                          disabled={
+                            categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles
+                          }
+                          onClick={async () => {
+                            // Set isFetchingNewArticles to true for this category
+                            setCategories(
+                              categories.map(cat =>
+                                cat.id === category.id ? { ...cat, isFetchingNewArticles: true } : cat
+                              )
+                            );
 
-                          await fetchNewsForCategory(category.id);
-                        }}
-                      >
-                        {category.isFetchingNewArticles ? <Loader size={14} /> : <RefreshCw size={14} />}
+                            // get custom links from category, by going into category.links array and get the url property and put them in a array, so we can have array of urls and trim the white spaces
+                            const customLinks = category.links.map(link => link.url.trim());
+
+                            // await fetchNewsForC
+
+                            // print the custom links
+                            console.log("Custom Links:", customLinks);
+
+                            await fetchNewsForCategory(category.id, customLinks);
+                          }}
+                        >
+                          {
+                            // get isFetchingNewArticles and isFetchedAllNewArticles of categoriesStatus for category.is and show loading
+                            categoriesStatus.find(status => status.categoryId === category.id)?.isFetchingArticles ? (
+                              <Loader size={14} />
+                            ) : (
+                              <RefreshCw size={14} />
+                            )
+                          }
+                          <span key={category.id} ref={refFetchNews}>
+                            {categoriesStatus.find(status => status.categoryId === category.id)?.isFetchingArticles
+                              ? "Fetching"
+                              : categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles
+                              ? "Fetched"
+                              : "Fetch News"}
+                          </span>
+                          {/* {categoriesStatus ? <Loader size={14} /> : <RefreshCw size={14} />}
                         <span key={category.id} ref={refFetchNews}>
-                          {category.isFetchingNewArticles ? "Fetching..." : "Fetch News"}
-                        </span>
-                      </button>
+                        {category.isFetchingNewArticles ? "Fetching..." : "Fetch News"}
+                        </span> */}
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 )}

@@ -103,14 +103,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               Title: row.Title,
             });
 
-            // Add link as an article (inside the same conditional)
-            categoriesMap[row.CategoryID].articles.push({
-              id: `link-${row.LinkID}`,
-              title: row.Title || "Untitled Link",
-              summary: "",
-              link: row.URL ?? "",
-              selected: false,
-            });
+            // // Add link as an article (inside the same conditional)
+            // categoriesMap[row.CategoryID].articles.push({
+            //   id: `link-${row.LinkID}`,
+            //   title: row.Title || "Untitled Link",
+            //   summary: "",
+            //   link: row.URL ?? "",
+            //   selected: false,
+            // });
 
             seenLinks[linkKey] = true;
           }
