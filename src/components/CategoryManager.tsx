@@ -14,7 +14,6 @@ export default function CategoryManager({
   activeTab,
   setActiveTab,
   selectedCategoryName,
-  selectedCategoryId,
 }: {
   newCategoryName: string;
   setNewCategoryName: (name: string) => void;
@@ -24,7 +23,6 @@ export default function CategoryManager({
   activeTab: string | null;
   setActiveTab: (tab: string | null) => void;
   selectedCategoryName: string;
-  selectedCategoryId: number;
 }) {
   const [editingPrompt, setEditingPrompt] = useState(false);
   // this will be used to track if the user is adding a new category and show a loading spinner
@@ -32,9 +30,23 @@ export default function CategoryManager({
 
   const [links, setLinks] = useState<{ id: string; title: string; url: string }[]>([]);
 
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+
   const [summaryPrompt, setSummaryPrompt] = useState(
     "Summarise the following: #article_content# , DO NOT EXCEED #numbers# words"
   );
+
+  // set the selected category id when it's null and use the selectedCategoryName to find the category id
+  useEffect(() => {
+    if (!selectedCategoryId && selectedCategoryName) {
+      const category = categories.find(category => category.name === selectedCategoryName);
+      if (category) {
+        setSelectedCategoryId(category.id);
+      }
+    }
+  }, [selectedCategoryName, categories, selectedCategoryId]);
+
+  // fetch links when the selected category id changes
 
   // create a useEffect that will update links whenever the selectedCategoryId changes
   useEffect(() => {
@@ -45,6 +57,22 @@ export default function CategoryManager({
       }
     }
   }, [selectedCategoryId, categories]);
+
+  // update links whenever the categories links change
+  useEffect(() => {
+    // find the current category id by using selectedCategoryName, so loop over categories and find the category with the same name
+    const currentCategoryId = categories.find(category => category.name === selectedCategoryName)?.id;
+    if (currentCategoryId) {
+      const category = categories.find(category => category.id === currentCategoryId);
+      if (category) {
+        setLinks(category.links.map(link => ({ ...link, id: link.id.toString(), title: link.title || "" })));
+      }
+    }
+    // print that this useEffect is rendering with unique id WW11
+    console.log("useEffect rendering with unique id WW11");
+  }, [categories]);
+
+  // update links whenever the links state changes
 
   // Function to toggle tabs
   const toggleTab = (tab: string) => {
@@ -103,6 +131,9 @@ export default function CategoryManager({
 
   // print categories and mention that from the component name
   console.log("Categories from CategoryManager: ", categories);
+
+  // print links
+  console.log("Links from CategoryManager: ", links);
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-100">
       {/* Tab Navigation */}
@@ -400,6 +431,4 @@ export default function CategoryManager({
     </div>
   );
 }
-function refreshLinks() {
-  throw new Error("Function not implemented.");
-}
+

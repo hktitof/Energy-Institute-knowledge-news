@@ -1,5 +1,5 @@
 // pages/index.js
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, X, ExternalLink, Plus } from "lucide-react";
 import axios from "axios";
@@ -32,6 +32,34 @@ export default function NewsAggregator() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const refFetchNews = useRef<HTMLSpanElement>(null);
+
+  // create a useState that will track the each category that is being fetched, ti should have categoryId and isFetchedAllArticles, isFetchingArticles, and it will be updated as long as there is a new category that is being fetched
+  const [categoriesStatus, setCategoriesStatus] = useState<
+    Array<{
+      categoryId: number;
+      isFetchingArticles: boolean;
+      isFetchedAllArticles: boolean;
+    }>
+  >([]);
+
+  // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
+  useEffect(() => {
+    // get the categories that are being fetched
+    const categoriesBeingFetched = categories.filter(category =>
+      category.articles.some(article => article.title === "")
+    );
+    // set the categoriesStatus array with the categories that are being fetched
+    setCategoriesStatus(
+      categoriesBeingFetched.map(category => ({
+        categoryId: category.id,
+        isFetchingArticles: true,
+        isFetchedAllArticles: false,
+      }))
+    );
+    // print setting categories status
+    console.log("Setting categories status, useEffect!!");
+  }, [categories]);
 
   useEffect(() => {
     // call the fetchCategories function when the component mounts
@@ -193,7 +221,8 @@ export default function NewsAggregator() {
       // Add processSummaries=true to get article titles and summaries
       const apiUrl = `/api/category-article-links-scrapper?url=${encodedUrl}&processSummaries=true`;
 
-      console.log("Calling API endpoint:", apiUrl);
+      // set isFetchingNewArticles to true for this category
+      setCategories(categories.map(cat => (cat.id === categoryId ? { ...cat, isFetchingNewArticles: true } : cat)));
 
       const response = await fetch(apiUrl);
 
@@ -216,22 +245,47 @@ export default function NewsAggregator() {
       if (data.articles.length === 0 || data.articles[0].title === "") {
         return [];
       }
-      setCategories(
-        categories.map(cat => {
+
+      
+
+      // update setCategories by adding the new articles to the existing articles
+      setCategories(prevCategories => {
+        return prevCategories.map(cat => {
           if (cat.id === categoryId) {
             return {
               ...cat,
               isFetchingNewArticles: false,
-              articles: data.articles.map(article => ({
-                ...article,
-                summary: extractSummary(article.summary),
-                selected: false,
-              })),
+              articles: [
+                ...cat.articles,
+                ...data.articles.map(article => ({
+                  ...article,
+                  id: article.id.toString(),
+                  summary: extractSummary(article.summary),
+                  selected: false,
+                })),
+              ],
             };
           }
           return cat;
-        })
-      );
+        });
+      });
+
+      // fix the order id of articles inside the articles array, it should be [{id:0, ...},{id:1, ...},{id:2, ...},...]
+      setCategories(prevCategories => {
+              return prevCategories.map(cat => {
+                if (cat.id === categoryId) {
+                  return {
+                    ...cat,
+                    articles: cat.articles.map((article, index) => ({
+                      ...article,
+                      id: index.toString(),
+                    })),
+                  };
+                }
+                return cat;
+              });
+            })
+
       return data.articles;
     } catch (error) {
       console.error("Error fetching news for category:", error);
@@ -305,7 +359,131 @@ export default function NewsAggregator() {
     }
   };
 
-  // console logs
+  const refetchArticles = async (categoryId: number) => {
+    // get category using categoryId
+    const category = categories.find(cat => cat.id === categoryId);
+
+    // print category is not defined if category is not found
+    if (!category) {
+      console.error("Category is not defined");
+      return;
+    }
+
+    // Count how many articles are fetched
+    const fetchedArticles = category.articles.filter(article => article.title !== "");
+    // Count how many articles are not fetched
+    const notFetchedArticles = category.articles.filter(article => article.summary === "");
+
+    if (notFetchedArticles.length > 0) {
+      // Get the links to the articles that are not fetched
+      const notFetchedLinks = notFetchedArticles.map(article => article.link);
+      console.log("Not fetched links:", notFetchedLinks);
+
+      try {
+        // Call your API to fetch titles and summaries using axios
+        const response = await axios.post("/api/title-summaries-by-links", {
+          links: notFetchedLinks, // This sends an array of strings which is correct
+          maxConcurrent: 5,
+          maxWords: 100,
+        });
+
+        // Axios automatically throws for error status codes, so no need to check response.ok
+        const data = response.data;
+
+        // Update the articles with the fetched data
+        const updatedArticles = category.articles.map(article => {
+          if (article.title === "") {
+            // Find the matching result from our API
+            const matchingResult: { title: string; summary: string; url: string } | undefined = data.results.find(
+              (result: { url: string }) => result.url === article.link
+            );
+            if (matchingResult) {
+              return {
+                ...article,
+                title: matchingResult.title || "",
+                summary: matchingResult.summary || "",
+              };
+            }
+          }
+          return article;
+        });
+
+        // Update the category with the updated articles
+        setCategories(
+          categories.map(cat =>
+            cat.id === category.id ? { ...cat, articles: updatedArticles, isFetchingNewArticles: false } : cat
+          )
+        );
+        // set refetch news button text back to News Fetched
+        refFetchNews.current!.innerText = "Fetched";
+      } catch (error) {
+        console.error("Error fetching article details:", error);
+        // Set isFetchingNewArticles back to false
+        setCategories(categories.map(cat => (cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat)));
+      }
+    } else {
+      // print all articles are fetched!!
+      console.log("All articles are fetched!!");
+      // No articles need fetching
+      setCategories(categories.map(cat => (cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat)));
+
+      // set setCategoryStatus to true for this category id, within the categoriesStatus array
+      setCategoriesStatus(prevStatus =>
+        prevStatus.map(status =>
+          status.categoryId === categoryId
+            ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true }
+            : status
+        )
+      );
+    }
+  };
+
+  // create a useEffect that will track whenever isFetchingArticles is true, for a category, and if it it is true, it will perform a refetchArticles for that category if only is FetchedAllArticles is false
+  useEffect(() => {
+    const fetchArticles = async () => {
+      if (categoriesStatus.some(status => status.isFetchingArticles && !status.isFetchedAllArticles)) {
+        const category = categories.find(
+          cat => cat.id === categoriesStatus.find(status => status.isFetchingArticles)?.categoryId
+        );
+        if (category) {
+          await refetchArticles(category.id);
+        }
+      }
+      // print refetching articles, is performed by a useEffect
+      console.log("Refetching articles, useEffect!!");
+    };
+
+    // print that we are calling this useEffect
+    console.log("Calling useEffect!!");
+    fetchArticles();
+
+    // fetchArticles();
+  }, [categoriesStatus]);
+
+  // create a useEffect that will track when a link has been added to a category, so then it will added to the article array of the category, so the article array if have no article, then it will have a new article with id 1 and empty title, summary, but with the link added from the category links array, it should only run when a new link is added to a category
+  useEffect(() => {
+    const addLinkToArticles = () => {
+      const category = categories.find(cat => cat.id === selectedCategoryId);
+      if (category) {
+        if (category.links.length > 0) {
+          const newArticles = category.links.map((link, index) => ({
+            id: (index + 1).toString(),
+            title: "",
+            summary: "",
+            link: link.url,
+            selected: false,
+          }));
+          setCategories(
+            categories.map(cat => (cat.id === selectedCategoryId ? { ...cat, articles: newArticles } : cat))
+          );
+        }
+      }
+      // print adding link to articles, is performed by a useEffect
+      console.log("Adding link to articles, useEffect!!");
+    };
+
+    addLinkToArticles();
+  }, [selectedCategoryId, categories]);
 
   // print categories
   console.log("categories :", categories);
@@ -528,7 +706,7 @@ export default function NewsAggregator() {
                             /* Add function to manage links */
                             setSelectedCategoryName(category.name);
                             setActiveTab("links");
-                            setSelectedCategoryId(category.id);
+                            // setSelectedCategoryId(category.id);
                           }}
                         >
                           <Link size={14} />
@@ -536,22 +714,26 @@ export default function NewsAggregator() {
                         </button>
                       </div>
                       <button
-                        className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow hover:cursor-pointer"
+                        className={`bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow ${
+                          category.isFetchingNewArticles ? "opacity-50 hover:cursor-wait" : "hover:cursor-pointer" // disable the button if isFetchingNewArticles is true
+                        } 
+                        `}
                         disabled={category.isFetchingNewArticles}
                         onClick={async () => {
-                          // set isFetchingNewArticles to true for this category, loop in categories and set isFetchingNewArticles to true for this category id
+                          // Set isFetchingNewArticles to true for this category
                           setCategories(
                             categories.map(cat =>
                               cat.id === category.id ? { ...cat, isFetchingNewArticles: true } : cat
                             )
                           );
+
                           await fetchNewsForCategory(category.id);
-                          // print categories list
-                          // console.log("clicking on Fetch News : ", categories);
                         }}
                       >
                         {category.isFetchingNewArticles ? <Loader size={14} /> : <RefreshCw size={14} />}
-                        {category.isFetchingNewArticles ? <span>Fetching...</span> : <span>Fetch News</span>}
+                        <span key={category.id} ref={refFetchNews}>
+                          {category.isFetchingNewArticles ? "Fetching..." : "Fetch News"}
+                        </span>
                       </button>
                     </div>
                   </motion.div>
@@ -584,7 +766,6 @@ export default function NewsAggregator() {
           setActiveTab={setActiveTab}
           activeTab={activeTab}
           selectedCategoryName={selectedCategoryName || ""}
-          selectedCategoryId={selectedCategoryId ?? 0}
           categories={categories}
         />
 
@@ -619,12 +800,7 @@ export default function NewsAggregator() {
                         >
                           Title
                         </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Content
-                        </th>
+
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -653,13 +829,15 @@ export default function NewsAggregator() {
                             />
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-gray-900">{article.title}</div>
+                            <div className={`text-sm font-medium text-gray-900 ${article.title ? "" : "text-center"} `}>
+                              {article.title || "---------------------------"}
+                            </div>
                           </td>
+
                           <td className="px-6 py-4">
-                            <div className="text-sm text-gray-500 max-w-xs truncate">{article.content}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-500">{article.summary}</div>
+                            <div className={`text-sm font-medium text-gray-900 ${article.title ? "" : "text-center"} `}>
+                              {article.summary || "---------------------------"}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <a

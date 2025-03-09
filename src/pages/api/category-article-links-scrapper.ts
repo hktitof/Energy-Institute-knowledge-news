@@ -161,19 +161,22 @@ async function extractAndSummarize(
             {
               role: "user",
               content: `Create a concise summary (maximum ${maxWords} words) of the following article. Focus only on the key information, main arguments, and essential details. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
-
-Article title: ${title}
-Article content: ${textContent}
-
-Return your response as a JSON object with this exact format:
-{
-  "title": "The exact article title",
-  "summary": "The concise summary of the article"
-}`,
+    
+    Article title: ${title}
+    Article content: ${textContent}
+    
+    Return your response as a JSON object with this exact format, without any markdown formatting or code blocks:
+    {
+      "title": "The exact article title",
+      "summary": "The concise summary of the article"
+    }
+    
+    IMPORTANT: Return only the raw JSON object, no markdown formatting, no code blocks, no backticks.`,
             },
           ],
           max_tokens: 800,
           temperature: 0.3, // Lower temperature for more focused/consistent output
+          response_format: { type: "json_object" }, // Specify JSON response format if the API supports it
         }),
       }
     );
@@ -188,7 +191,12 @@ Return your response as a JSON object with this exact format:
     // Parse the JSON response
     let jsonOutput;
     try {
-      jsonOutput = JSON.parse(aiOutput);
+      // Remove markdown code block formatting if present
+      const cleanedOutput = aiOutput
+        .replace(/```json\s*/, "")
+        .replace(/```\s*$/, "")
+        .trim();
+      jsonOutput = JSON.parse(cleanedOutput);
       // Validate the JSON structure
       if (!jsonOutput.title || !jsonOutput.summary) {
         throw new Error("Invalid JSON structure");
@@ -196,10 +204,41 @@ Return your response as a JSON object with this exact format:
     } catch (error) {
       // If JSON parsing fails, create a valid JSON from the raw response
       console.error("Failed to parse JSON from API response:", error);
+
+      // More robust regex that can handle nested quotes in the summary
+      const titleMatch = aiOutput.match(/"title"\s*:\s*"((?:\\"|[^"])*)"/);
+      const summaryMatch = aiOutput.match(/"summary"\s*:\s*"((?:\\"|[^"])*)"/);
+
       jsonOutput = {
-        title: title,
-        summary: aiOutput.replace(/^.*?summary":\s*"(.*?)"\s*}.*?$/, "$1").trim(),
+        title: titleMatch ? titleMatch[1].replace(/\\"/g, '"') : title,
+        summary: summaryMatch ? summaryMatch[1].replace(/\\"/g, '"') : aiOutput,
       };
+      let summary = aiOutput;
+      // First find the position of "summary":
+      const summaryPos = summary.indexOf('"summary":');
+      if (summaryPos !== -1) {
+        // Find first quote after "summary":
+        const startQuotePos = summary.indexOf('"', summaryPos + 10);
+        if (startQuotePos !== -1) {
+          // Find the closing quote (accounting for escaped quotes)
+          let endQuotePos = startQuotePos + 1;
+          let insideEscape = false;
+          while (endQuotePos < summary.length) {
+            if (summary[endQuotePos] === "\\") {
+              insideEscape = !insideEscape;
+            } else if (summary[endQuotePos] === '"' && !insideEscape) {
+              break;
+            } else {
+              insideEscape = false;
+            }
+            endQuotePos++;
+          }
+
+          if (endQuotePos < summary.length) {
+            summary = summary.substring(startQuotePos + 1, endQuotePos);
+          }
+        }
+      }
     }
 
     return {
@@ -332,7 +371,7 @@ export default async function handler(
     // If requested, fetch titles and summaries for each article (limit to 5 to prevent timeout)
     if (shouldProcessSummaries && uniqueArticles.length > 0) {
       // Process only the first 5 articles to avoid timeouts
-      const articlesToProcess = uniqueArticles.slice(0, 5);
+      const articlesToProcess = uniqueArticles.slice(0, 20);
 
       // Use Promise.allSettled to fetch all summaries in parallel and continue even if some fail
       const summaryResults = await Promise.allSettled(

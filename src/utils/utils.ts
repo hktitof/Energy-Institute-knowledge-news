@@ -24,6 +24,7 @@ export interface Category {
   showTable: boolean;
   isFetchingNewArticles?: boolean;
   links: { id: number; url: string; title?: string }[];
+  fetchedAllArticles?: boolean;
 }
 
 // Helper function to extract the summary from markdown JSON
@@ -45,12 +46,13 @@ const extractSummary = (rawSummary: string): string => {
 // Function helpers
 
 // Fetch categories, search terms, and links from API
+// Fetch categories, search terms, and links from API
 export const fetchCategories = async (setCategories: React.Dispatch<React.SetStateAction<Category[]>>) => {
   axios
     .get<{ categories: ApiCategory[] }>("/api/categories/categories")
     .then(response => {
       const fetchedCategories = response.data.categories.map(cat => {
-        // Use a Set to store unique links
+        // Use a Map to store unique links
         const uniqueLinks = new Map<number, { id: number; url: string; title?: string }>();
 
         cat.links.forEach(link => {
@@ -68,8 +70,8 @@ export const fetchCategories = async (setCategories: React.Dispatch<React.SetSta
           name: cat.CategoryName,
           searchTerms: cat.searchTerms.map(term => term.Term),
           showTable: false, // always false on the client side
-          articles: [], // empty for now
           links: Array.from(uniqueLinks.values()), // Convert the map back to an array
+          articles: cat.articles || [], // Include the articles from the API response
         };
       });
 
@@ -82,42 +84,41 @@ export const fetchCategories = async (setCategories: React.Dispatch<React.SetSta
     });
 };
 
-
 const handleDeleteLink = async (linkId: string) => {
-    // If confirmation dialog is not shown yet, show it first
-    if (showConfirmation !== linkId) {
-      setShowConfirmation(linkId);
-      return;
+  // If confirmation dialog is not shown yet, show it first
+  if (showConfirmation !== linkId) {
+    setShowConfirmation(linkId);
+    return;
+  }
+
+  // If confirmed, proceed with deletion
+  try {
+    setDeletingIds(prev => [...prev, linkId]);
+
+    const response = await fetch(`/api/links/delete?linkId=${linkId}`, {
+      method: "DELETE",
+    });
+
+    // print response and mention that from the component name
+    console.log("Response from handleDeleteLink: ", response);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to delete link");
     }
 
-    // If confirmed, proceed with deletion
-    try {
-      setDeletingIds(prev => [...prev, linkId]);
-
-      const response = await fetch(`/api/links/delete?linkId=${linkId}`, {
-        method: "DELETE",
-      });
-
-      // print response and mention that from the component name
-      console.log("Response from handleDeleteLink: ", response);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete link");
-      }
-
-      // Success - clear confirmation state and refresh links
-      setShowConfirmation(null);
-      toast.success("Link deleted successfully");
-      fetchCategories(setCategories);
-    } catch (error: unknown) {
-      console.error("Error deleting link:", error);
-      if (error instanceof Error) {
-        toast.error(error.message || "Error deleting link");
-      } else {
-        toast.error("Error deleting link");
-      }
-    } finally {
-      setDeletingIds(prev => prev.filter(id => id !== linkId));
+    // Success - clear confirmation state and refresh links
+    setShowConfirmation(null);
+    toast.success("Link deleted successfully");
+    fetchCategories(setCategories);
+  } catch (error: unknown) {
+    console.error("Error deleting link:", error);
+    if (error instanceof Error) {
+      toast.error(error.message || "Error deleting link");
+    } else {
+      toast.error("Error deleting link");
     }
-  };
+  } finally {
+    setDeletingIds(prev => prev.filter(id => id !== linkId));
+  }
+};

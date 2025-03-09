@@ -41,11 +41,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       CategoryName: string;
       searchTerms: SearchTerm[];
       links: Link[];
+      articles: Article[];
     }
+
+    type Article = {
+      id: string;
+      title: string;
+      summary: string;
+      link: string;
+      selected: boolean;
+    };
 
     // Group rows into categories with search terms and links
     const categoriesMap: { [key: number]: Category } = {};
-    
+
     // Track seen IDs to avoid duplicates
     const seenSearchTerms: { [key: string]: boolean } = {};
     const seenLinks: { [key: string]: boolean } = {};
@@ -66,9 +75,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             CategoryName: row.CategoryName,
             searchTerms: [],
             links: [],
+
+            articles: [],
           };
         }
-        
+
         // Add search term only if we haven't seen it before for this category
         if (row.SearchTermID !== null) {
           const searchTermKey = `${row.CategoryID}-${row.SearchTermID}`;
@@ -80,16 +91,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             seenSearchTerms[searchTermKey] = true;
           }
         }
-        
+
         // Add link only if we haven't seen it before for this category
         if (row.LinkID !== null) {
           const linkKey = `${row.CategoryID}-${row.LinkID}`;
           if (!seenLinks[linkKey]) {
+            // Add to links array
             categoriesMap[row.CategoryID].links.push({
               LinkID: row.LinkID,
               URL: row.URL ?? "",
               Title: row.Title,
             });
+
+            // Add link as an article (inside the same conditional)
+            categoriesMap[row.CategoryID].articles.push({
+              id: `link-${row.LinkID}`,
+              title: row.Title || "Untitled Link",
+              summary: "",
+              link: row.URL ?? "",
+              selected: false,
+            });
+
             seenLinks[linkKey] = true;
           }
         }
