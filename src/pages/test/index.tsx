@@ -3,7 +3,6 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, X, ExternalLink, Plus } from "lucide-react";
 import axios from "axios";
-import { useEffect } from "react";
 
 // import fetchCategories from utils.ts
 import { fetchCategories } from "../../utils/utils";
@@ -11,6 +10,8 @@ import { fetchCategories } from "../../utils/utils";
 // import types Category and Article from utils.ts
 import { Category, Article } from "../../utils/utils";
 // import loader icon for loading states
+import { useEffect } from "react";
+import { sampleCategory } from "@/utils/sampleCategory";
 import { Loader } from "lucide-react";
 import { Trash, Trash2, RefreshCw, Link, Globe } from "lucide-react";
 import { toast } from "react-toastify";
@@ -45,6 +46,28 @@ export default function NewsAggregator() {
       isFetchedAllArticles: boolean;
     }>
   >([]);
+
+  // TODO : remove this later as is for testing purposes
+
+  // Add this at the top of your component, outside any effects or handlers
+  const categoriesProcessed = useRef(false);
+
+  useEffect(() => {
+    console.log("Categories useEffect running, current categories:", categories);
+
+    // Check if categories is not an empty array and hasn't been processed yet
+    if (categories.length > 0 && !categoriesProcessed.current) {
+      console.log("Processing categories for the first time");
+
+      // Set your value here (replace this with what you want to assign)
+      setCategories(sampleCategory);
+
+      // Mark that we've processed categories to prevent this from running again
+      categoriesProcessed.current = true;
+
+      console.log("Categories processed, selected:", categories[0].name);
+    }
+  }, [categories]); // Only re-run when categories changes
 
   // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
   useEffect(() => {
@@ -203,93 +226,111 @@ export default function NewsAggregator() {
     body: string;
   }
 
-  const fetchNewsForCategory: FetchNewsForCategory = async (categoryId, customLinks = [], currentCategories) => {
-    // Use the passed currentCategories instead of the global categories state
-    const category = currentCategories?.find(cat => cat.id === categoryId);
+  // Simplified and more robust fetchNewsForCategory function
+  const fetchNewsForCategory = async (categoryId, customLinks = [], currentCategories) => {
+    // Get the category data
+    const categoryData = currentCategories || categories;
+    const category = categoryData.find(cat => cat.id === categoryId);
 
-    // print to the console that we are fetching news for the category
-    if (category) {
-      console.log(`Fetching news for category ${category.name}`);
-    }
-
-    // Get the search terms for the category and assign them to an array
     if (!category) {
       console.error(`Category with ID ${categoryId} not found`);
       return [];
     }
 
-    const searchTerms = category.searchTerms;
+    // Set loading state
+    setCategories(prevCategories =>
+      prevCategories.map(cat => (cat.id === categoryId ? { ...cat, isFetchingNewArticles: true } : cat))
+    );
 
-    if (!searchTerms.length && !customLinks.length) {
-      console.warn(`No search terms or custom links found for category ${categoryId}`);
-      return [];
-    }
-
-    // Set isFetchingNewArticles to true for this category
-    setCategories(categories.map(cat => (cat.id === categoryId ? { ...cat, isFetchingNewArticles: true } : cat)));
+    // Log what we're doing to help with debugging
+    console.log(`Fetching news for category: ${category.name}`);
+    console.log(`Search terms: ${category.searchTerms.join(", ")}`);
+    console.log(`Custom links: ${customLinks.length}`);
 
     try {
-      let apiUrl: string = "/api/category-article-links-scrapper";
-      let fetchOptions: RequestInit = {};
+      // Prepare API request data
+      const searchUrl =
+        category.searchTerms.length > 0
+          ? `https://www.google.co.uk/search?q=${encodeURIComponent(
+              category.searchTerms.join(" OR ")
+            )}&tbm=nws&tbs=qdr:w`
+          : "";
 
-      // If we have search terms, create a Google search URL
-      if (searchTerms.length > 0) {
-        // Get the google news search URL
-        const searchUrl: string = `https://www.google.co.uk/search?q=${encodeURIComponent(
-          searchTerms.join(" OR ")
-        )}&tbm=nws&tbs=qdr:w`;
+      // Always use POST for consistency, regardless of parameters
+      const response = await fetch("/api/category-article-links-scrapper", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          searchUrl: searchUrl || null,
+          processSummaries: "true",
+          urls: customLinks.length > 0 ? customLinks : [],
+        }),
+      });
 
-        console.log("Generated search URL:", searchUrl);
+      // Log the raw response for debugging
+      console.log("API Response Status:", response.status);
 
-        if (customLinks.length > 0) {
-          // If we have both search terms and custom links, use POST with both
-          fetchOptions = {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              searchUrl: searchUrl,
-              processSummaries: "true",
-              urls: customLinks,
-            }),
-          } as ApiRequestOptions;
-        } else {
-          // If we only have search terms, use GET
-          const encodedUrl: string = encodeURIComponent(searchUrl);
-          apiUrl = `${apiUrl}?url=${encodedUrl}&processSummaries=true`;
-        }
-      } else if (customLinks.length > 0) {
-        // If we only have custom links, use POST with urls only
-        fetchOptions = {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ urls: customLinks }),
-        } as ApiRequestOptions;
-      }
-
-      // Make the API request
-      const response: Response = await fetch(apiUrl, fetchOptions);
-
-      // Check for non-JSON responses
-      const contentType: string | null = response.headers.get("content-type");
+      // Handle non-JSON responses
+      const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        console.error("Received non-JSON response:", await response.text());
+        const textResponse = await response.text();
+        console.error("Non-JSON response:", textResponse);
         throw new Error("API returned non-JSON response");
       }
 
       if (!response.ok) {
-        const errorData: { error?: string } = await response.json();
+        const errorData = await response.json();
+        console.error("API error:", errorData);
         throw new Error(errorData.error || "Failed to fetch news");
       }
 
-      const data: FetchNewsResponse = await response.json();
-      console.log(`Articles found for category ${category.name}:`, data.articles);
+      const data = await response.json();
+      console.log(`Articles fetched for ${category.name}:`, data.articles);
 
-      // update the categories state with the new articles
-      if (data.articles.length === 0 || data.articles[0].title === "") {
+      // Rest of your logic for processing articles...
+      if (data.articles && data.articles.length > 0 && data.articles[0].title !== "") {
+        setCategories(prevCategories => {
+          return prevCategories.map(cat => {
+            if (cat.id === categoryId) {
+              return {
+                ...cat,
+                isFetchingNewArticles: false,
+                articles: [
+                  ...cat.articles,
+                  ...(data.articles.map(article => ({
+                    ...article,
+                    id: article.id.toString(),
+                    summary: extractSummary(article.summary),
+                    selected: false,
+                  })) as Article[]),
+                ],
+              };
+            }
+            return cat;
+          });
+        });
+
+        // Fix article IDs
+        setCategories(prevCategories => {
+          return prevCategories.map(cat => {
+            if (cat.id === categoryId) {
+              return {
+                ...cat,
+                articles: cat.articles.map((article, index) => ({
+                  ...article,
+                  id: index.toString(),
+                })),
+              };
+            }
+            return cat;
+          });
+        });
+
+        return data.articles;
+      } else {
+        console.log("No articles found or empty response");
         setCategories(prevCategories => {
           return prevCategories.map(cat => {
             if (cat.id === categoryId) {
@@ -303,50 +344,10 @@ export default function NewsAggregator() {
         });
         return [];
       }
-
-      // update setCategories by adding the new articles to the existing articles
-      setCategories(prevCategories => {
-        return prevCategories.map(cat => {
-          if (cat.id === categoryId) {
-            return {
-              ...cat,
-              isFetchingNewArticles: false,
-              articles: [
-                ...cat.articles,
-                ...(data.articles.map((article: Article) => ({
-                  ...article,
-                  id: article.id.toString(),
-                  summary: extractSummary(article.summary),
-                  selected: false,
-                })) as Article[]),
-              ],
-            };
-          }
-          return cat;
-        });
-      });
-
-      // fix the order id of articles inside the articles array
-      setCategories(prevCategories => {
-        return prevCategories.map(cat => {
-          if (cat.id === categoryId) {
-            return {
-              ...cat,
-              articles: cat.articles.map((article, index) => ({
-                ...article,
-                id: index.toString(),
-              })),
-            };
-          }
-          return cat;
-        });
-      });
-
-      return data.articles;
     } catch (error) {
-      console.error("Error fetching news for category:", error);
+      console.error("Error fetching news:", error);
 
-      // Make sure to set isFetchingNewArticles back to false in case of error
+      // Always reset loading state on error
       setCategories(prevCategories => {
         return prevCategories.map(cat => {
           if (cat.id === categoryId) {
@@ -358,7 +359,6 @@ export default function NewsAggregator() {
           return cat;
         });
       });
-
       return [];
     }
   };
