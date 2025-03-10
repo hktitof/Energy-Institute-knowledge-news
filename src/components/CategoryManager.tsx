@@ -6,6 +6,8 @@ import type { Category } from "@/utils/utils";
 import { Edit, Plus, Trash2, Settings, ExternalLink, Link as LinkIcon, Type } from "lucide-react";
 import { toast } from "react-toastify";
 import LinkForm from "./LinkForm";
+import ArticleSummarizer from "./ArticleSummarizer";
+import ArticleSummarizerTab from "./ArticleSummarizerTab";
 export default function CategoryManager({
   newCategoryName,
   setNewCategoryName,
@@ -179,7 +181,7 @@ export default function CategoryManager({
           onClick={() => toggleTab("template")}
         >
           <Settings size={16} className="mr-2" />
-          Summary Template
+          Summarize Article
         </button>
       </div>
 
@@ -338,45 +340,46 @@ export default function CategoryManager({
       )}
 
       {activeTab === "template" && (
-        <div className="p-5 bg-white animate-fadeIn">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-800">Summary Prompt Template</h3>
-            <button
-              onClick={() => setEditingPrompt(!editingPrompt)}
-              className="text-blue-600 hover:text-blue-800 flex items-center text-sm font-medium px-3 py-1 rounded-md hover:bg-blue-50 transition-colors duration-200"
-            >
-              <Edit size={16} className="mr-1" />
-              {editingPrompt ? "Save" : "Edit"}
-            </button>
-          </div>
+        // <div className="p-5 bg-white animate-fadeIn">
+        //   <div className="flex justify-between items-center mb-4">
+        //     <h3 className="text-lg font-medium text-gray-800">Summary Prompt Template</h3>
+        //     <button
+        //       onClick={() => setEditingPrompt(!editingPrompt)}
+        //       className="text-blue-600 hover:text-blue-800 flex items-center text-sm font-medium px-3 py-1 rounded-md hover:bg-blue-50 transition-colors duration-200"
+        //     >
+        //       <Edit size={16} className="mr-1" />
+        //       {editingPrompt ? "Save" : "Edit"}
+        //     </button>
+        //   </div>
 
-          {editingPrompt ? (
-            <textarea
-              value={summaryPrompt}
-              onChange={e => setSummaryPrompt(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-36 text-sm"
-              placeholder="Enter your summary prompt template..."
-            />
-          ) : (
-            <div className="p-4 bg-gray-50 rounded-md text-gray-700 border border-gray-100 text-sm whitespace-pre-wrap min-h-[9rem]">
-              {summaryPrompt}
-            </div>
-          )}
+        //   {editingPrompt ? (
+        //     <textarea
+        //       value={summaryPrompt}
+        //       onChange={e => setSummaryPrompt(e.target.value)}
+        //       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-36 text-sm"
+        //       placeholder="Enter your summary prompt template..."
+        //     />
+        //   ) : (
+        //     <div className="p-4 bg-gray-50 rounded-md text-gray-700 border border-gray-100 text-sm whitespace-pre-wrap min-h-[9rem]">
+        //       {summaryPrompt}
+        //     </div>
+        //   )}
 
-          <div className="mt-4 p-4 bg-blue-50 rounded-md text-sm text-blue-700 border border-blue-100">
-            <p className="font-medium mb-2">Template Variables:</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex items-center p-2 bg-white rounded border border-blue-200">
-                <code className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-mono text-xs">#article_content#</code>
-                <span className="ml-2 text-xs">Insert article content</span>
-              </div>
-              <div className="flex items-center p-2 bg-white rounded border border-blue-200">
-                <code className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-mono text-xs">#numbers#</code>
-                <span className="ml-2 text-xs">Insert word count</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        //   <div className="mt-4 p-4 bg-blue-50 rounded-md text-sm text-blue-700 border border-blue-100">
+        //     <p className="font-medium mb-2">Template Variables:</p>
+        //     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        //       <div className="flex items-center p-2 bg-white rounded border border-blue-200">
+        //         <code className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-mono text-xs">#article_content#</code>
+        //         <span className="ml-2 text-xs">Insert article content</span>
+        //       </div>
+        //       <div className="flex items-center p-2 bg-white rounded border border-blue-200">
+        //         <code className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-mono text-xs">#numbers#</code>
+        //         <span className="ml-2 text-xs">Insert word count</span>
+        //       </div>
+        //     </div>
+        //   </div>
+        // </div>
+        <ArticleSummarizerTab />
       )}
 
       {/* Show a welcome message if no tab is selected */}

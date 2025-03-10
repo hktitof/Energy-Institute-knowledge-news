@@ -17,6 +17,7 @@ import { toast } from "react-toastify";
 import { promises as fs } from "fs";
 import CategoryManager from "@/components/CategoryManager";
 import LinkList from "@/components/LinkList";
+import ArticlesTable from "@/components/ArticlesTable";
 
 export default function NewsAggregator() {
   // Declare a state variable called categories and set it to an empty array of Category objects
@@ -33,6 +34,8 @@ export default function NewsAggregator() {
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const refFetchNews = useRef<HTMLSpanElement>(null);
+  // declare which category is is being fetching
+  const [categoriesFetching, setCategoriesFetching] = useState<number | null>(null);
 
   // create a useState that will track the each category that is being fetched, ti should have categoryId and isFetchedAllArticles, isFetchingArticles, and it will be updated as long as there is a new category that is being fetched
   const [categoriesStatus, setCategoriesStatus] = useState<
@@ -57,8 +60,6 @@ export default function NewsAggregator() {
         isFetchedAllArticles: false,
       }))
     );
-    // print setting categories status
-    console.log("Setting categories status, useEffect!!");
   }, [categories]);
 
   useEffect(() => {
@@ -117,16 +118,12 @@ export default function NewsAggregator() {
     // Map through the categories array
     setCategories(
       categories.map((category: Category) => {
-        // If the category id matches the categoryId parameter
-        if (category.id === categoryId) {
-          // Return a new category object with the showTable property toggled
-          return {
-            ...category,
-            showTable: !category.showTable,
-          };
-        }
-        // Otherwise, return the original category object
-        return category;
+        // If the category id matches the categoryId parameter, toggle its state
+        // For all other categories, ensure they are closed (showTable: false)
+        return {
+          ...category,
+          showTable: category.id === categoryId ? !category.showTable : false,
+        };
       })
     );
   };
@@ -161,8 +158,7 @@ export default function NewsAggregator() {
 
   // Function to fetch news for a category (would be replaced with actual API call)
   interface FetchNewsForCategory {
-    // this function will receive categoryId and customLinks as parameters, and they are array of urls
-    (categoryId: number, customLinks?: string[]): Promise<Article[]>;
+    (categoryId: number, customLinks?: string[], currentCategories?: Category[]): Promise<Article[]>;
   }
 
   interface FetchNewsResponse {
@@ -184,8 +180,32 @@ export default function NewsAggregator() {
     return rawSummary;
   };
 
-  const fetchNewsForCategory: FetchNewsForCategory = async (categoryId, customLinks = []) => {
-    const category = categories.find(cat => cat.id === categoryId);
+  interface FetchNewsArticle {
+    id: string;
+    title: string;
+    summary: string;
+    link: string;
+  }
+
+  interface FetchNewsResponse {
+    articles: Article[];
+  }
+
+  interface FetchNewsForCategory {
+    (categoryId: number, customLinks?: string[], currentCategories?: Category[]): Promise<FetchNewsArticle[]>;
+  }
+
+  interface ApiRequestOptions {
+    method: string;
+    headers: {
+      "Content-Type": string;
+    };
+    body: string;
+  }
+
+  const fetchNewsForCategory: FetchNewsForCategory = async (categoryId, customLinks = [], currentCategories) => {
+    // Use the passed currentCategories instead of the global categories state
+    const category = currentCategories?.find(cat => cat.id === categoryId);
 
     // print to the console that we are fetching news for the category
     if (category) {
@@ -209,13 +229,13 @@ export default function NewsAggregator() {
     setCategories(categories.map(cat => (cat.id === categoryId ? { ...cat, isFetchingNewArticles: true } : cat)));
 
     try {
-      let apiUrl = "/api/category-article-links-scrapper";
+      let apiUrl: string = "/api/category-article-links-scrapper";
       let fetchOptions: RequestInit = {};
 
       // If we have search terms, create a Google search URL
       if (searchTerms.length > 0) {
         // Get the google news search URL
-        const searchUrl = `https://www.google.co.uk/search?q=${encodeURIComponent(
+        const searchUrl: string = `https://www.google.co.uk/search?q=${encodeURIComponent(
           searchTerms.join(" OR ")
         )}&tbm=nws&tbs=qdr:w`;
 
@@ -233,10 +253,10 @@ export default function NewsAggregator() {
               processSummaries: "true",
               urls: customLinks,
             }),
-          };
+          } as ApiRequestOptions;
         } else {
           // If we only have search terms, use GET
-          const encodedUrl = encodeURIComponent(searchUrl);
+          const encodedUrl: string = encodeURIComponent(searchUrl);
           apiUrl = `${apiUrl}?url=${encodedUrl}&processSummaries=true`;
         }
       } else if (customLinks.length > 0) {
@@ -247,21 +267,21 @@ export default function NewsAggregator() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ urls: customLinks }),
-        };
+        } as ApiRequestOptions;
       }
 
       // Make the API request
-      const response = await fetch(apiUrl, fetchOptions);
+      const response: Response = await fetch(apiUrl, fetchOptions);
 
       // Check for non-JSON responses
-      const contentType = response.headers.get("content-type");
+      const contentType: string | null = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         console.error("Received non-JSON response:", await response.text());
         throw new Error("API returned non-JSON response");
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData: { error?: string } = await response.json();
         throw new Error(errorData.error || "Failed to fetch news");
       }
 
@@ -293,12 +313,12 @@ export default function NewsAggregator() {
               isFetchingNewArticles: false,
               articles: [
                 ...cat.articles,
-                ...data.articles.map(article => ({
+                ...(data.articles.map((article: Article) => ({
                   ...article,
                   id: article.id.toString(),
                   summary: extractSummary(article.summary),
                   selected: false,
-                })),
+                })) as Article[]),
               ],
             };
           }
@@ -342,11 +362,221 @@ export default function NewsAggregator() {
       return [];
     }
   };
+
   // Function to fetch all news
-  const fetchAllNews = () => {
-    alert("Fetching news for all categories");
-    // In a real app, this would call an API for all categories
+  // Function to fetch all news
+  const fetchAllNews = async () => {
+    // Show initial feedback to user
+    toast.info("Starting to fetch news for all categories...");
+
+    // Create a local copy of category IDs to track which ones were originally open
+    const openCategoryIds = new Set(categories.filter(cat => cat.showTable).map(cat => cat.id));
+
+    // Create a copy of categories to track updates throughout the process
+    let updatedCategories = [...categories];
+
+    try {
+      // Process each category sequentially
+      for (let i = 0; i < updatedCategories.length; i++) {
+        const category = updatedCategories[i];
+
+        // Skip categories that are already being processed
+        if (category.isFetchingNewArticles) {
+          continue;
+        }
+
+        try {
+          // Set the current category as being fetched - this will control which category is open
+          setCategoriesFetching(category.id);
+
+          // Update UI to show which category is being processed
+          updatedCategories = updatedCategories.map(cat => ({
+            ...cat,
+            // Only open the current category being processed
+            showTable: cat.id === category.id,
+            // Set loading state only for this category
+            isFetchingNewArticles: cat.id === category.id ? true : cat.isFetchingNewArticles,
+          }));
+
+          // Update React state to reflect changes
+          setCategories(updatedCategories);
+
+          // Update UI to show which category is being processed
+          toast.info(`Fetching news for "${category.name}" (${i + 1}/${updatedCategories.length})`, {
+            autoClose: 2000,
+          });
+
+          // Ensure the UI updates before proceeding
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Get custom links from the category
+          const customLinks = category.links.map(link => link.url.trim());
+
+          // Get the search terms for the category
+          const searchTerms = category.searchTerms;
+
+          try {
+            let apiUrl = "/api/category-article-links-scrapper";
+            let fetchOptions = {};
+
+            // If we have search terms, create a Google search URL
+            if (searchTerms.length > 0) {
+              // Get the google news search URL
+              const searchUrl = `https://www.google.co.uk/search?q=${encodeURIComponent(
+                searchTerms.join(" OR ")
+              )}&tbm=nws&tbs=qdr:w`;
+
+              console.log("Generated search URL:", searchUrl);
+
+              if (customLinks.length > 0) {
+                // If we have both search terms and custom links, use POST with both
+                fetchOptions = {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    searchUrl: searchUrl,
+                    processSummaries: "true",
+                    urls: customLinks,
+                  }),
+                };
+              } else {
+                // If we only have search terms, use GET
+                const encodedUrl = encodeURIComponent(searchUrl);
+                apiUrl = `${apiUrl}?url=${encodedUrl}&processSummaries=true`;
+              }
+            } else if (customLinks.length > 0) {
+              // If we only have custom links, use POST with urls only
+              fetchOptions = {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ urls: customLinks }),
+              };
+            }
+
+            // Make the API request directly instead of using fetchNewsForCategory
+            const response = await fetch(apiUrl, fetchOptions);
+
+            // Check for non-JSON responses
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+              console.error("Received non-JSON response:", await response.text());
+              throw new Error("API returned non-JSON response");
+            }
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || "Failed to fetch news");
+            }
+
+            const data = await response.json();
+            console.log(`Articles found for category ${category.name}:`, data.articles);
+
+            // If we have articles, update our local copy of categories
+            if (data.articles && data.articles.length > 0 && data.articles[0].title !== "") {
+              // Find current category in our local copy
+              const categoryIndex = updatedCategories.findIndex(cat => cat.id === category.id);
+
+              if (categoryIndex !== -1) {
+                // Process articles with proper format
+                const processedArticles = data.articles.map((article, index) => ({
+                  ...article,
+                  id: index.toString(),
+                  summary: extractSummary(article.summary),
+                  selected: false,
+                }));
+
+                // Update the category with new articles
+                updatedCategories[categoryIndex] = {
+                  ...updatedCategories[categoryIndex],
+                  articles: processedArticles,
+                  isFetchingNewArticles: false,
+                };
+
+                // Update the React state with our updated local copy
+                setCategories([...updatedCategories]);
+              }
+            } else {
+              // Update loading state if no articles were found
+              updatedCategories = updatedCategories.map(cat =>
+                cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
+              );
+              setCategories([...updatedCategories]);
+            }
+          } catch (error) {
+            console.error(`Error fetching news data for category "${category.name}":`, error);
+
+            // Update loading state on error
+            updatedCategories = updatedCategories.map(cat =>
+              cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
+            );
+            setCategories([...updatedCategories]);
+          }
+
+          // Wait to ensure the UI reflects the fetched data
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+          console.error(`Error processing category "${category.name}":`, error);
+          toast.error(`Failed to fetch news for "${category.name}"`);
+
+          // Reset loading state for this category in our local copy
+          updatedCategories = updatedCategories.map(cat =>
+            cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
+          );
+
+          // Update the React state with our updated local copy
+          setCategories([...updatedCategories]);
+
+          // Give user time to see the error
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+
+      // After all processing, restore original open/closed state
+      const finalCategories = updatedCategories.map(cat => {
+        return {
+          ...cat, // This now includes all fetched articles
+          showTable: openCategoryIds.has(cat.id), // Restore original open/closed state
+          isFetchingNewArticles: false, // Reset loading state
+        };
+      });
+
+      setCategories(finalCategories);
+
+      // Reset the categoriesFetching state
+      setCategoriesFetching(null);
+
+      toast.success("Completed fetching news for all categories");
+    } catch (error) {
+      console.error("Error in fetchAllNews:", error);
+      toast.error("An error occurred while fetching news");
+
+      // Reset the categoriesFetching state in case of error
+      setCategoriesFetching(null);
+    }
   };
+
+  // Add this useEffect to help debug categoriesStatus changes
+  useEffect(() => {
+    // Log when categoriesStatus changes
+    console.log("categoriesStatus changed:", categoriesStatus);
+
+    // Store a copy in localStorage for debugging persistence
+    if (categoriesStatus.length > 0) {
+      localStorage.setItem("debug_categoriesStatus", JSON.stringify(categoriesStatus));
+    }
+
+    // If categoriesStatus becomes empty but we had previous values, investigate
+    if (categoriesStatus.length === 0) {
+      const previousStatus = localStorage.getItem("debug_categoriesStatus");
+      if (previousStatus && JSON.parse(previousStatus).length > 0) {
+        console.warn("categoriesStatus was reset to empty array! Previous value:", JSON.parse(previousStatus));
+      }
+    }
+  }, [categoriesStatus]);
 
   // Function to summarize selected articles
   interface SummarizeSelectedArticles {
@@ -620,7 +850,6 @@ export default function NewsAggregator() {
           });
         }
       }
-      console.log("Adding link to articles, useEffect!!");
     };
 
     addLinkToArticles();
@@ -713,7 +942,7 @@ export default function NewsAggregator() {
               </motion.div>
 
               <AnimatePresence>
-                {category.showTable && (
+                {(category.showTable || categoriesFetching === category.id) && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
@@ -874,9 +1103,7 @@ export default function NewsAggregator() {
                             category.isFetchingNewArticles ? "opacity-50 hover:cursor-wait" : "hover:cursor-pointer" // disable the button if isFetchingNewArticles is true
                           } 
                         `}
-                          disabled={
-                            categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles
-                          }
+                          disabled={category.isFetchingNewArticles}
                           onClick={async () => {
                             // Set isFetchingNewArticles to true for this category
                             setCategories(
@@ -885,36 +1112,24 @@ export default function NewsAggregator() {
                               )
                             );
 
-                            // get custom links from category, by going into category.links array and get the url property and put them in a array, so we can have array of urls and trim the white spaces
+                            // Also set this as the currently fetching category
+                            setCategoriesFetching(category.id);
+
+                            // get custom links from category
                             const customLinks = category.links.map(link => link.url.trim());
 
-                            // await fetchNewsForC
-
-                            // print the custom links
                             console.log("Custom Links:", customLinks);
 
                             await fetchNewsForCategory(category.id, customLinks);
+
+                            // Reset the categoriesFetching state when done
+                            setCategoriesFetching(null);
                           }}
                         >
-                          {
-                            // get isFetchingNewArticles and isFetchedAllNewArticles of categoriesStatus for category.is and show loading
-                            categoriesStatus.find(status => status.categoryId === category.id)?.isFetchingArticles ? (
-                              <Loader size={14} />
-                            ) : (
-                              <RefreshCw size={14} />
-                            )
-                          }
+                          {category.isFetchingNewArticles ? <Loader size={14} /> : <RefreshCw size={14} />}
                           <span key={category.id} ref={refFetchNews}>
-                            {categoriesStatus.find(status => status.categoryId === category.id)?.isFetchingArticles
-                              ? "Fetching"
-                              : categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles
-                              ? "Fetched"
-                              : "Fetch News"}
+                            {category.isFetchingNewArticles ? "Fetching" : "Fetch News"}
                           </span>
-                          {/* {categoriesStatus ? <Loader size={14} /> : <RefreshCw size={14} />}
-                        <span key={category.id} ref={refFetchNews}>
-                        {category.isFetchingNewArticles ? "Fetching..." : "Fetch News"}
-                        </span> */}
                         </button>
                       )}
                     </div>
@@ -997,44 +1212,8 @@ export default function NewsAggregator() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {category.articles.map(article => (
-                        <tr key={article.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={article.selected || false}
-                              onChange={() =>
-                                toggleArticleSelection({ categoryId: category.id, articleId: article.id })
-                              }
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className={`text-sm font-medium text-gray-900 ${article.title ? "" : "text-center"} `}>
-                              {article.title || "---------------------------"}
-                            </div>
-                          </td>
 
-                          <td className="px-6 py-4">
-                            <div className={`text-sm font-medium text-gray-900 ${article.title ? "" : "text-center"} `}>
-                              {article.summary || "---------------------------"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <a
-                              href={article.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-900 flex items-center"
-                            >
-                              <ExternalLink size={16} className="mr-1" />
-                              Link
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
+                    <ArticlesTable categories={categories} category={category} setCategories={setCategories} />
                   </table>
                 </div>
               </div>

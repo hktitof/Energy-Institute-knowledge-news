@@ -3,7 +3,7 @@ import { load } from "cheerio";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Article } from "@/utils/utils";
 import { JSDOM } from "jsdom";
-
+import retry from "async-retry";
 interface NewsResponse {
   articles: Article[];
 }
@@ -16,146 +16,109 @@ interface ErrorResponse {
 async function extractAndSummarize(
   url: string,
   maxWords: number = 100
-): Promise<{ title: string; summary: string } | null> {
+): Promise<{ title: string; summary: string }> {
   try {
-    // Fetch the HTML content
-    const response = await axios.get(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
+    // Fetch the HTML content with retry logic
+    const response = await retry(
+      async () => {
+        return await axios.get(url, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+          },
+          timeout: 15000,
+        });
       },
-      timeout: 15000,
-    });
+      {
+        retries: 3, // Retry up to 3 times
+        minTimeout: 1000, // Start with 1-second delay
+        factor: 2, // Exponential backoff
+        onRetry: (error) => {
+          console.log(`Retrying ${url} due to error: ${error.message}`);
+        },
+      }
+    );
 
     // Parse the HTML using JSDOM
     const dom = new JSDOM(response.data, { url });
     const document = dom.window.document;
 
-    // Extract all visible text from the document
+    // Extract all visible text (your existing function)
     function extractAllVisibleText(doc: Document): string {
-      // Remove all script and style elements
       const scripts = doc.querySelectorAll("script, style, noscript, svg, head");
       scripts.forEach(el => el.remove());
 
-      // Function to recursively extract text from nodes
       function extractTextFromNode(node: Node): string {
-        // Text node - return its content
         if (node.nodeType === node.TEXT_NODE) {
           return node.textContent?.trim() || "";
         }
-
-        // Not an element node
         if (node.nodeType !== node.ELEMENT_NODE) {
           return "";
         }
-
         const element = node as Element;
-
-        // Skip hidden elements
         const hasHiddenAttr =
           element.hasAttribute("hidden") ||
           element.getAttribute("aria-hidden") === "true" ||
           element.getAttribute("style")?.includes("display: none") ||
           element.getAttribute("style")?.includes("visibility: hidden");
-
         if (hasHiddenAttr) {
           return "";
         }
-
-        // Collect text from all child nodes
         let textContent = "";
         for (let i = 0; i < node.childNodes.length; i++) {
           textContent += extractTextFromNode(node.childNodes[i]) + " ";
         }
-
-        // Add line breaks for block elements to improve readability
-        const blockTags = [
-          "DIV",
-          "P",
-          "H1",
-          "H2",
-          "H3",
-          "H4",
-          "H5",
-          "H6",
-          "LI",
-          "TD",
-          "SECTION",
-          "ARTICLE",
-          "BLOCKQUOTE",
-          "BR",
-        ];
+        const blockTags = ["DIV", "P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "TD", "SECTION", "ARTICLE", "BLOCKQUOTE", "BR"];
         if (blockTags.includes(element.tagName)) {
           return "\n" + textContent.trim() + "\n";
         }
-
         return textContent.trim();
       }
-
-      // Get all text from the body
       const bodyText = extractTextFromNode(doc.body);
-
-      // Clean up the text
       return bodyText
-        .replace(/\n{3,}/g, "\n\n") // Replace multiple newlines with double newlines
-        .replace(/\s+/g, " ") // Replace multiple spaces with single space
-        .replace(/\n +/g, "\n") // Remove spaces after newlines
-        .replace(/ +\n/g, "\n") // Remove spaces before newlines
-        .split("\n") // Split by newlines
-        .map(line => line.trim()) // Trim each line
-        .filter(line => line) // Remove empty lines
-        .join("\n") // Join back with newlines
-        .trim(); // Final trim
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/\s+/g, " ")
+        .replace(/\n +/g, "\n")
+        .replace(/ +\n/g, "\n")
+        .split("\n")
+        .map(line => line.trim())
+        .filter(line => line)
+        .join("\n")
+        .trim();
     }
 
-    // Get a clean title - try to extract the main title without site name
+    // Extract and clean the title (your existing logic)
     const rawTitle = document.title || "";
-
-    // Find h1 element which often has the main title
     const h1Elements = document.querySelectorAll("h1");
-    let mainHeading = "";
-
-    if (h1Elements.length > 0) {
-      // Usually the first h1 is the main title
-      mainHeading = h1Elements[0].textContent?.trim() || "";
-    }
-
-    // Choose the best title
+    const mainHeading = h1Elements.length > 0 ? h1Elements[0].textContent?.trim() || "" : "";
     let title = mainHeading || rawTitle;
-
-    // Clean up the title - remove site names like "| Site Name" or "- Site Name"
     title = title.replace(/\s*[|\-–—]\s*[^|\-–—]+$/, "").trim();
-
-    // If title still has site indicators, try to get just the first part
     if (!title || title.length < 5) {
       title = rawTitle.split(/[|\-–—]/)[0].trim();
     }
 
-    // Extract all visible text
-    // Extract all visible text
+    // Extract text content
     const textContent = extractAllVisibleText(document);
 
-    // Call Azure OpenAI API for summarization with improved prompt
+    // Azure OpenAI API call (your existing logic)
     const endpoint = process.env.AZURE_OPENAI_API_BASE?.replace(/\/$/, "");
     const apiKey = process.env.AZURE_OPENAI_API_KEY;
     const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME;
 
     if (!endpoint || !apiKey || !deploymentName) {
       console.error("Azure OpenAI API configuration is missing");
-      return null;
+      return { title: "Configuration Error", summary: "Azure OpenAI API configuration is missing." };
     }
 
-    // Implement retry logic with exponential backoff
-    const maxRetries = 5; // Define the maximum number of retries
-    let retries = 0;
     let aiResponse;
-    let delay = 5000; // Start with 2 second delay
+    let retries = 0;
+    const maxRetries = 5;
+    let delay = 5000;
 
     while (retries <= maxRetries) {
       try {
-        // Call Azure OpenAI API for summarization
         aiResponse = await fetch(
           `${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`,
           {
@@ -189,104 +152,52 @@ async function extractAndSummarize(
           }
         );
 
-        // If request succeeded, break out of the retry loop
-        if (aiResponse.ok) {
-          break;
-        }
+        if (aiResponse.ok) break;
 
-        // If we get a rate limit error (status 429), retry after delay
         if (aiResponse.status === 429) {
-          console.log(
-            `Rate limit exceeded (attempt ${retries + 1}/${maxRetries + 1}). Retrying after ${delay / 1000} seconds.`
-          );
-
-          // Extract retry-after header if available, otherwise use our exponential backoff
+          console.log(`Rate limit exceeded (attempt ${retries + 1}/${maxRetries + 1}). Retrying after ${delay / 1000} seconds.`);
           const retryAfter = aiResponse.headers.get("retry-after");
           const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : delay;
-
           await new Promise(resolve => setTimeout(resolve, waitTime));
           retries++;
-          delay *= 2; // Exponential backoff
+          delay *= 2;
           continue;
         }
 
-        // If it's not a rate limit error and not successful, throw error
         throw new Error(`Azure OpenAI API returned status ${aiResponse.status}`);
       } catch (error) {
         console.error(`Error calling Azure OpenAI API (attempt ${retries + 1}/${maxRetries + 1}):`, error);
-
-        // If we've reached max retries, throw the error
         if (retries >= maxRetries) {
           throw error;
         }
-
-        // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, delay));
         retries++;
-        delay *= 2; // Exponential backoff
+        delay *= 2;
       }
     }
 
-    // If we've exhausted all retries without success
     if (!aiResponse || !aiResponse.ok) {
-      throw new Error("Failed to get response from Azure OpenAI API after multiple retries");
+      throw new Error("Failed to get response from Azure OpenAI API after retries");
     }
 
-    // [rest of the function remains the same]
     const aiData = await aiResponse.json();
     const aiOutput = aiData.choices[0].message.content;
 
-    // Parse the JSON response
     let jsonOutput;
     try {
-      // Remove markdown code block formatting if present
-      const cleanedOutput = aiOutput
-        .replace(/```json\s*/, "")
-        .replace(/```\s*$/, "")
-        .trim();
+      const cleanedOutput = aiOutput.replace(/```json\s*/, "").replace(/```\s*$/, "").trim();
       jsonOutput = JSON.parse(cleanedOutput);
-      // Validate the JSON structure
       if (!jsonOutput.title || !jsonOutput.summary) {
         throw new Error("Invalid JSON structure");
       }
     } catch (error) {
-      // If JSON parsing fails, create a valid JSON from the raw response
       console.error("Failed to parse JSON from API response:", error);
-
-      // More robust regex that can handle nested quotes in the summary
       const titleMatch = aiOutput.match(/"title"\s*:\s*"((?:\\"|[^"])*)"/);
       const summaryMatch = aiOutput.match(/"summary"\s*:\s*"((?:\\"|[^"])*)"/);
-
       jsonOutput = {
         title: titleMatch ? titleMatch[1].replace(/\\"/g, '"') : title,
-        summary: summaryMatch ? summaryMatch[1].replace(/\\"/g, '"') : aiOutput,
+        summary: summaryMatch ? summaryMatch[1].replace(/\\"/g, '"') : "Failed to generate summary.",
       };
-      let summary = aiOutput;
-      // First find the position of "summary":
-      const summaryPos = summary.indexOf('"summary":');
-      if (summaryPos !== -1) {
-        // Find first quote after "summary":
-        const startQuotePos = summary.indexOf('"', summaryPos + 10);
-        if (startQuotePos !== -1) {
-          // Find the closing quote (accounting for escaped quotes)
-          let endQuotePos = startQuotePos + 1;
-          let insideEscape = false;
-          while (endQuotePos < summary.length) {
-            if (summary[endQuotePos] === "\\") {
-              insideEscape = !insideEscape;
-            } else if (summary[endQuotePos] === '"' && !insideEscape) {
-              break;
-            } else {
-              insideEscape = false;
-            }
-            endQuotePos++;
-          }
-
-          if (endQuotePos < summary.length) {
-            summary = summary.substring(startQuotePos + 1, endQuotePos);
-          }
-        }
-      }
     }
 
     return {
@@ -294,8 +205,15 @@ async function extractAndSummarize(
       summary: jsonOutput.summary,
     };
   } catch (error) {
-    console.error(`Error summarizing article ${url}:`, error);
-    return null;
+    // Enhanced error handling with specific placeholders
+    if (axios.isAxiosError(error) && error.response && error.response.status === 403) {
+      return { title: "Access Denied", summary: "Unable to fetch content due to access restrictions." };
+    } else if (error instanceof Error && ["ECONNRESET", "ETIMEDOUT", "ECONNABORTED"].includes((error as any).code)) {
+      return { title: "Fetch Error", summary: "Unable to fetch content due to network issues." };
+    } else {
+      console.error(`Error summarizing article ${url}:`, error);
+      return { title: "Error", summary: "Failed to process article." };
+    }
   }
 }
 
@@ -491,7 +409,7 @@ export default async function handler(
         // Process only the first 20 articles to avoid timeouts
         const articlesToProcess = articles.slice(0, 20);
         const processedArticles = [];
-        const concurrencyLimit = 1; // Process 3 articles at a time
+        const concurrencyLimit = 2; // Process 3 articles at a time
 
         // Process articles in batches to control concurrency
         for (let i = 0; i < articlesToProcess.length; i += concurrencyLimit) {
