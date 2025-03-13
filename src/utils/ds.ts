@@ -40,9 +40,15 @@ export const connectDB = async () => {
 export const executeQuery = async (query: string, params: (string | number | boolean | Date | Buffer)[] = []) => {
   // Ensure connection is available before executing a query.
   if (!pool || !pool.connected) {
-    console.error("No active connection, attempting to reconnect...");
+    console.log("No active connection, attempting to reconnect...");
     await connectDB();
+
+    // Add this check - if connection still failed after attempting to connect
+    if (!pool || !pool.connected) {
+      throw new Error("Database connection unavailable - quota exceeded");
+    }
   }
+
   console.log("Executing query:", query);
 
   try {
@@ -53,9 +59,7 @@ export const executeQuery = async (query: string, params: (string | number | boo
     const result = await request.query(query);
     return result.recordset;
   } catch (err: unknown) {
-    if (err instanceof Error) {
-      console.error("Database query error:", err.message);
-      throw new Error("Internal Server Error");
-    }
+    console.error("Database query error:", err);
+    throw new Error(err instanceof Error ? err.message : "Internal Server Error");
   }
 };

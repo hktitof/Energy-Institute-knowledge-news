@@ -43,6 +43,8 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     setEditingArticle(article.id);
     setEditTitle(article.title || "");
     setEditSummary(article.summary || "");
+    // categories articles title and summary based on article id
+    
   };
 
   // Toggle article selection
@@ -108,6 +110,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   };
 
   // Update handlePreview function
+  // Modify your handlePreview function
   const handlePreview = async (article: Article) => {
     setPreviewArticle(article);
     setIsLoading(true);
@@ -117,29 +120,35 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     setUseScreenshot(false);
 
     try {
-      // Try the advanced puppeteer-based API first
-      const response = await fetch(`/api/preview-advanced?url=${encodeURIComponent(article.link)}`);
+      console.log(`Fetching preview for: ${article.link}`); // Add debugging
+      const response = await fetch(`/api/preview-advanced?url=${encodeURIComponent(article.link)}`, {
+        credentials: "include",
+      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
+      console.log(`Response status: ${response.status}`); // Add debugging
 
       const data = await response.json();
+      console.log("Preview data:", data); // Add debugging
 
       if (data.error) {
+        console.error("Preview API returned error:", data.error);
         throw new Error(data.error);
       }
 
-      setPreviewHtml(data.html);
+      if (data.html) {
+        setPreviewHtml(data.html);
+      } else {
+        console.error("No HTML content received");
+        throw new Error("No HTML content received");
+      }
 
-      // Store the screenshot for fallback
       if (data.screenshot) {
         setPreviewScreenshot(data.screenshot);
       }
     } catch (error) {
       console.error("Failed to load preview:", error);
 
-      // If we have a screenshot, show it instead of error
+      // Check if we already have a screenshot from earlier in the process
       if (previewScreenshot) {
         setUseScreenshot(true);
       } else {
@@ -265,7 +274,9 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                   </a>
                   <button
                     ref={refCopy}
-                    onClick={() => handleCopyLink(article.link)}
+                    onClick={() => {
+                      handleCopyLink(article.link);
+                    }}
                     className="text-purple-600 hover:text-purple-900 flex items-center hover:cursor-pointer"
                   >
                     <Copy size={16} className="mr-1" />
@@ -321,14 +332,14 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
 
       {/* Preview Modal */}
       {previewArticle && (
-        <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center px-6 py-8">
+        <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center px-3 py-2">
           <div className="fixed inset-0 bg-black opacity-50" onClick={handleClosePreview}></div>
           <div className="relative bg-white rounded-lg shadow-xl w-full h-full flex flex-col">
             {/* Modal Header */}
-            <div className="p-4 border-b border-gray-200 flex justify-between items-start">
+            <div className="px-6 py-2 border-b border-gray-200 flex justify-between items-start">
               <div className="space-y-2 flex-1">
-                <h2 className="text-xl font-bold text-gray-900">{previewArticle.title}</h2>
-                <p className="text-sm text-gray-600">{previewArticle.summary}</p>
+                <h2 className="text-lg font-bold text-gray-900">{previewArticle.title}</h2>
+                <p className="text-xs text-gray-600">{previewArticle.summary}</p>
                 {/* Display the source domain */}
                 {previewArticle.link && (
                   <div className="flex items-center text-xs text-gray-500">
@@ -389,7 +400,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                   </div>
                 </div>
               )}
-              {/* // Add this to your modal body */}
+              {/* // Adfd this to your modal body */}
               {useScreenshot && previewScreenshot && (
                 <div className="w-full h-full flex flex-col items-center justify-start overflow-auto p-4">
                   <div className="bg-gray-100 p-2 mb-4 w-full rounded-md text-sm text-gray-700">
@@ -411,7 +422,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                 id="preview-iframe"
                 title={previewArticle.title || "Article Preview"}
                 className="w-full h-full border-0"
-                sandbox="allow-same-origin allow-scripts"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox"
               />
             </div>
 

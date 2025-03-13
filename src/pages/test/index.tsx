@@ -47,27 +47,29 @@ export default function NewsAggregator() {
     }>
   >([]);
 
-  // TODO : remove this later as is for testing purposes
+  // TODO : remove this lines later as is for testing purposes
 
   // Add this at the top of your component, outside any effects or handlers
-  const categoriesProcessed = useRef(false);
+  // const categoriesProcessed = useRef(false);
 
-  useEffect(() => {
-    console.log("Categories useEffect running, current categories:", categories);
+  // useEffect(() => {
+  //   console.log("Categories useEffect running, current categories:", categories);
 
-    // Check if categories is not an empty array and hasn't been processed yet
-    if (categories.length > 0 && !categoriesProcessed.current) {
-      console.log("Processing categories for the first time");
+  //   // Check if categories is not an empty array and hasn't been processed yet
+  //   if (categories.length > 0 && !categoriesProcessed.current) {
+  //     console.log("Processing categories for the first time");
 
-      // Set your value here (replace this with what you want to assign)
-      setCategories(sampleCategory);
+  //     // Set your value here (replace this with what you want to assign)
+  //     setCategories(sampleCategory);
 
-      // Mark that we've processed categories to prevent this from running again
-      categoriesProcessed.current = true;
+  //     // Mark that we've processed categories to prevent this from running again
+  //     categoriesProcessed.current = true;
 
-      console.log("Categories processed, selected:", categories[0].name);
-    }
-  }, [categories]); // Only re-run when categories changes
+  //     console.log("Categories processed, selected:", categories[0].name);
+  //   }
+  // }, [categories]); // Only re-run when categories changes
+
+  // TODO : to here
 
   // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
   useEffect(() => {
@@ -87,7 +89,11 @@ export default function NewsAggregator() {
 
   useEffect(() => {
     // call the fetchCategories function when the component mounts
+    // TODO : Uncomment this to fetch categories from db
     fetchCategories(setCategories);
+
+    // TODO : and comment this when you finish and want to usee data from db
+    // setCategories(sampleCategory);
   }, []);
 
   const [loadingSearchTermId, setLoadingSearchTermId] = useState<number | null>(null); // Track loading state
@@ -1126,7 +1132,15 @@ export default function NewsAggregator() {
                             setCategoriesFetching(null);
                           }}
                         >
-                          {category.isFetchingNewArticles ? <Loader size={14} /> : <RefreshCw size={14} />}
+                          {category.isFetchingNewArticles ? (
+                            <Loader
+                              size={14}
+                              // add loading animation
+                              className="animate-spin text-white"
+                            />
+                          ) : (
+                            <RefreshCw size={14} />
+                          )}
                           <span key={category.id} ref={refFetchNews}>
                             {category.isFetchingNewArticles ? "Fetching" : "Fetch News"}
                           </span>
@@ -1143,10 +1157,20 @@ export default function NewsAggregator() {
         {/* Fixed bottom section for "Fetch All News" button */}
         <div className="absolute bottom-0 left-0 w-1/3 p-4 bg-white border-t border-gray-200">
           <button
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition shadow-md hover:cursor-pointer"
+            className={`w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition shadow-md hover:cursor-pointer flex items-center justify-center gap-1
+              ${categories.some(category => category.isFetchingNewArticles) ? "opacity-50 hover:cursor-wait" : ""}
+              `}
             onClick={fetchAllNews}
+            disabled={categories.some(category => category.isFetchingNewArticles)}
           >
-            Fetch All News
+            {categories.some(category => category.isFetchingNewArticles) ? (
+              <RefreshCw className="animate-spin text-white" size={14} />
+            ) : (
+              <RefreshCw size={14} />
+            )}
+            <span key="fetch-all-news">
+              {categories.some(category => category.isFetchingNewArticles) ? "Fetching All News" : "Fetch All News"}
+            </span>
           </button>
         </div>
       </div>

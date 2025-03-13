@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Copy, Check, Edit, ExternalLink, AlertCircle, FileJson } from "lucide-react";
+import { Copy, Check, Edit, ExternalLink, AlertCircle, FileJson, Link, FileText } from "lucide-react";
 
 // Define proper types for the API response
 interface SummaryResult {
   success: true;
-  url: string;
+  url?: string;
   title: string;
   summary: string;
   originalContent: string;
@@ -24,6 +24,8 @@ type ApiResponse = SummaryResult | ErrorResult;
 
 const ArticleSummarizer = () => {
   const [url, setUrl] = useState("");
+  const [pastedContent, setPastedContent] = useState("");
+  const [pastedTitle, setPastedTitle] = useState("");
   const [maxWords, setMaxWords] = useState(100);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +33,7 @@ const ArticleSummarizer = () => {
   const [activeTab, setActiveTab] = useState("summary");
   const [copied, setCopied] = useState<string | null>(null);
   const [editingPrompt, setEditingPrompt] = useState(false);
+  const [inputMethod, setInputMethod] = useState<"url" | "paste">("url");
   const [summaryPrompt, setSummaryPrompt] = useState(
     `Create a concise summary (maximum #words# words) of the following article. Focus only on the key information, main arguments, and essential details. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
 
@@ -60,49 +63,87 @@ Return your response as a JSON object with this exact format:
     setResult(null);
     setCopied(null);
 
-    // Trim and validate URL
-    const trimmedUrl = url.trim();
-    if (!trimmedUrl) {
-      setError("Please enter a URL");
-      return;
-    }
-
-    if (!validateUrl(trimmedUrl)) {
-      setError("Please enter a valid URL starting with http:// or https://");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Replace with your actual API endpoint
-      const response = await fetch("/api/extract-and-summarize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: trimmedUrl,
-          maxWords,
-          // Replace placeholders in prompt
-          promptTemplate: summaryPrompt
-            .replace("#words#", maxWords.toString())
-            .replace("#article_content#", "#content#"), // Will be replaced by API
-        }),
-      });
-
-      const data = (await response.json()) as ApiResponse;
-
-      if (data.success) {
-        setResult(data);
-      } else {
-        setError(data.error || "Failed to process article");
+    if (inputMethod === "url") {
+      // URL-based extraction and summarization
+      // Trim and validate URL
+      const trimmedUrl = url.trim();
+      if (!trimmedUrl) {
+        setError("Please enter a URL");
+        return;
       }
-    } catch (error) {
-      console.error("Error:", error);
-      setError("An error occurred while processing your request");
-    } finally {
-      setLoading(false);
+
+      if (!validateUrl(trimmedUrl)) {
+        setError("Please enter a valid URL starting with http:// or https://");
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const response = await fetch("/api/extract-and-summarize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url: trimmedUrl,
+            maxWords,
+            // Replace placeholders in prompt
+            promptTemplate: summaryPrompt
+              .replace("#words#", maxWords.toString())
+              .replace("#article_content#", "#content#"), // Will be replaced by API
+          }),
+        });
+
+        const data = (await response.json()) as ApiResponse;
+
+        if (data.success) {
+          setResult(data);
+        } else {
+          setError(data.error || "Failed to process article");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        setError("An error occurred while processing your request");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Pasted content summarization
+      if (!pastedContent.trim()) {
+        setError("Please paste some content to summarize");
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const response = await fetch("/api/summarize-text", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            textContent: pastedContent.trim(),
+            title: pastedTitle.trim() || undefined,
+            maxWords,
+            promptTemplate: summaryPrompt.replace("#words#", maxWords.toString()).replace("#title#", pastedTitle || ""),
+          }),
+        });
+
+        const data = (await response.json()) as ApiResponse;
+
+        if (data.success) {
+          setResult(data);
+        } else {
+          setError(data.error || "Failed to summarize content");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        setError("An error occurred while processing your request");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -118,7 +159,7 @@ Return your response as a JSON object with this exact format:
     return JSON.stringify(result.jsonOutput, null, 2);
   };
 
-  // write a function that will delete ```json { "title": " from an input and this " } ``` at the end
+  // Function to remove JSON formatting
   const removeJsonString = (text: string) => {
     // This will handle various JSON formatting patterns
     return text
@@ -132,38 +173,116 @@ Return your response as a JSON object with this exact format:
     <div className="w-full max-w-4xl bg-white rounded-lg shadow-md p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Article Summarizer</h1>
-        <p className="text-gray-600">Extract and summarize content from any article URL</p>
+        <p className="text-gray-600">Extract and summarize content from any article URL or pasted text</p>
+      </div>
+
+      {/* Input Method Tabs */}
+      <div className="mb-4 border-b border-gray-200">
+        <div className="flex -mb-px">
+          <button
+            onClick={() => setInputMethod("url")}
+            className={`py-2 px-4 border-b-2 font-medium text-sm flex items-center ${
+              inputMethod === "url"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <Link size={16} className="mr-2" />
+            URL Input
+          </button>
+          <button
+            onClick={() => setInputMethod("paste")}
+            className={`py-2 px-4 border-b-2 font-medium text-sm flex items-center ${
+              inputMethod === "paste"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <FileText size={16} className="mr-2" />
+            Paste Content
+          </button>
+        </div>
       </div>
 
       {/* URL Input Section */}
-      <div className="mb-6">
-        <label htmlFor="urlInput" className="block text-sm font-medium text-gray-700 mb-2">
-          Article URL
-        </label>
-        <div className="flex items-center">
-          <input
-            id="urlInput"
-            type="url"
-            className="flex-1 border border-gray-300 rounded-l-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            placeholder="https://example.com/article"
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-r-md transition duration-200 disabled:opacity-50"
-          >
-            {loading ? "Processing..." : "Summarize"}
-          </button>
-        </div>
-        {error && (
-          <div className="mt-2 flex items-center text-red-600 text-sm">
-            <AlertCircle size={16} className="mr-1" />
-            {error}
+      {inputMethod === "url" && (
+        <div className="mb-6">
+          <label htmlFor="urlInput" className="block text-sm font-medium text-gray-700 mb-2">
+            Article URL
+          </label>
+          <div className="flex items-center">
+            <input
+              id="urlInput"
+              type="url"
+              className="flex-1 border border-gray-300 rounded-l-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://example.com/article"
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-r-md transition duration-200 disabled:opacity-50 hover:cursor-pointer"
+            >
+              {loading ? "Processing..." : "Summarize"}
+            </button>
           </div>
-        )}
-      </div>
+          {error && inputMethod === "url" && (
+            <div className="mt-2 flex items-center text-red-600 text-sm">
+              <AlertCircle size={16} className="mr-1" />
+              {error}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Paste Content Section */}
+      {inputMethod === "paste" && (
+        <div className="mb-6">
+          <div className="mb-4">
+            <label htmlFor="pastedTitle" className="block text-sm font-medium text-gray-700 mb-2">
+              Title (Optional)
+            </label>
+            <input
+              id="pastedTitle"
+              type="text"
+              className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={pastedTitle}
+              onChange={e => setPastedTitle(e.target.value)}
+              placeholder="Enter a title for the content"
+            />
+          </div>
+
+          <label htmlFor="pastedContent" className="block text-sm font-medium text-gray-700 mb-2">
+            Content
+          </label>
+          <div className="relative">
+            <textarea
+              id="pastedContent"
+              className="w-full border border-gray-300 rounded-md p-3 h-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={pastedContent}
+              onChange={e => setPastedContent(e.target.value)}
+              placeholder="Paste article content here..."
+            />
+            <div className="absolute bottom-2 right-2 text-xs text-gray-500">{pastedContent.length} characters</div>
+          </div>
+          <div className="flex justify-end mt-3">
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition duration-200 disabled:opacity-50 hover:cursor-pointer"
+            >
+              {loading ? "Processing..." : "Summarize"}
+            </button>
+          </div>
+          {error && inputMethod === "paste" && (
+            <div className="mt-2 flex items-center text-red-600 text-sm">
+              <AlertCircle size={16} className="mr-1" />
+              {error}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Options Section */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -234,18 +353,20 @@ Return your response as a JSON object with this exact format:
               <div className="p-5 bg-white animate-fadeIn">
                 <div className="bg-blue-50 p-4 rounded-md border border-blue-100 mb-4">
                   <h2 className="text-xl font-semibold text-gray-800 mb-1">{result.jsonOutput.title}</h2>
-                  <div className="text-sm text-gray-500">
-                    Source:{" "}
-                    <a
-                      href={result.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline inline-flex items-center"
-                    >
-                      {result.url.length > 50 ? result.url.substring(0, 50) + "..." : result.url}
-                      <ExternalLink size={12} className="ml-1" />
-                    </a>
-                  </div>
+                  {result.url && (
+                    <div className="text-sm text-gray-500">
+                      Source:{" "}
+                      <a
+                        href={result.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline inline-flex items-center"
+                      >
+                        {result.url.length > 50 ? result.url.substring(0, 50) + "..." : result.url}
+                        <ExternalLink size={12} className="ml-1" />
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* Copy options below summary */}

@@ -121,6 +121,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(200).json({ categories });
   } catch (error) {
     console.error("Error fetching categories:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+
+    // Return a more specific error message
+    if (error instanceof Error && error.message.includes("quota exceeded")) {
+      return res.status(503).json({
+        error: "Database Unavailable",
+        message: "Azure SQL database quota has been exceeded for this month",
+      });
+    }
+
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 }
