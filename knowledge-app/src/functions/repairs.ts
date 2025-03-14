@@ -7,10 +7,10 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/fu
 
 import repairRecords from "../repairsData.json";
 
-import { Configuration, OpenAIApi } from "openai";
-
-const openaiConfig = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
-const openai = new OpenAIApi(openaiConfig);
+// import OpenAI from "openai";
+// const openai = new OpenAI({
+//   apiKey: process.env.OPENAI_API_KEY,
+// });
 
 /**
  * This function handles the HTTP request and returns the repair information.

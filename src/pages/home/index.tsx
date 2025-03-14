@@ -121,7 +121,7 @@ export default function NewsSearch() {
         if (titleElement && linkElement && snippetElement) {
           const title = titleElement.textContent || "No title";
           const paragraph = snippetElement.textContent || "No content";
-          const fullUrl = linkElement.href;
+          const fullUrl = linkElement.getAttribute("href") || "";
 
           // Extract actual URL from Google redirect URL
           const url = new URL(fullUrl).searchParams.get("url") || fullUrl;
@@ -132,7 +132,7 @@ export default function NewsSearch() {
 
       // Now try to fetch second page if exists
       if (doc.querySelector("a#pnnext")) {
-        const nextPageUrl = doc.querySelector("a#pnnext")?.href;
+        const nextPageUrl = doc.querySelector("a#pnnext")?.getAttribute("href");
         if (nextPageUrl) {
           const nextPageResponse = await fetch(`${corsProxy}${encodeURIComponent(nextPageUrl)}`);
           if (nextPageResponse.ok) {
@@ -148,7 +148,7 @@ export default function NewsSearch() {
               if (titleElement && linkElement && snippetElement) {
                 const title = titleElement.textContent || "No title";
                 const paragraph = snippetElement.textContent || "No content";
-                const fullUrl = linkElement.href;
+                const fullUrl = linkElement.getAttribute("href") || "";
 
                 // Extract actual URL from Google redirect URL
                 const url = new URL(fullUrl).searchParams.get("url") || fullUrl;

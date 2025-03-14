@@ -13,10 +13,11 @@ interface ErrorResponse {
   details?: string;
 }
 
-async function extractAndSummarize(
-  url: string,
-  maxWords: number = 100
-): Promise<{ title: string; summary: string }> {
+interface CustomError extends Error {
+  code?: string;
+}
+
+async function extractAndSummarize(url: string, maxWords: number = 100): Promise<{ title: string; summary: string }> {
   try {
     // Fetch the HTML content with retry logic
     const response = await retry(
@@ -35,7 +36,7 @@ async function extractAndSummarize(
         retries: 3, // Retry up to 3 times
         minTimeout: 1000, // Start with 1-second delay
         factor: 2, // Exponential backoff
-        onRetry: (error) => {
+        onRetry: (error: Error) => {
           console.log(`Retrying ${url} due to error: ${error.message}`);
         },
       }
@@ -70,7 +71,22 @@ async function extractAndSummarize(
         for (let i = 0; i < node.childNodes.length; i++) {
           textContent += extractTextFromNode(node.childNodes[i]) + " ";
         }
-        const blockTags = ["DIV", "P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "TD", "SECTION", "ARTICLE", "BLOCKQUOTE", "BR"];
+        const blockTags = [
+          "DIV",
+          "P",
+          "H1",
+          "H2",
+          "H3",
+          "H4",
+          "H5",
+          "H6",
+          "LI",
+          "TD",
+          "SECTION",
+          "ARTICLE",
+          "BLOCKQUOTE",
+          "BR",
+        ];
         if (blockTags.includes(element.tagName)) {
           return "\n" + textContent.trim() + "\n";
         }
@@ -155,7 +171,9 @@ async function extractAndSummarize(
         if (aiResponse.ok) break;
 
         if (aiResponse.status === 429) {
-          console.log(`Rate limit exceeded (attempt ${retries + 1}/${maxRetries + 1}). Retrying after ${delay / 1000} seconds.`);
+          console.log(
+            `Rate limit exceeded (attempt ${retries + 1}/${maxRetries + 1}). Retrying after ${delay / 1000} seconds.`
+          );
           const retryAfter = aiResponse.headers.get("retry-after");
           const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : delay;
           await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -165,7 +183,7 @@ async function extractAndSummarize(
         }
 
         throw new Error(`Azure OpenAI API returned status ${aiResponse.status}`);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`Error calling Azure OpenAI API (attempt ${retries + 1}/${maxRetries + 1}):`, error);
         if (retries >= maxRetries) {
           throw error;
@@ -185,7 +203,10 @@ async function extractAndSummarize(
 
     let jsonOutput;
     try {
-      const cleanedOutput = aiOutput.replace(/```json\s*/, "").replace(/```\s*$/, "").trim();
+      const cleanedOutput = aiOutput
+        .replace(/```json\s*/, "")
+        .replace(/```\s*$/, "")
+        .trim();
       jsonOutput = JSON.parse(cleanedOutput);
       if (!jsonOutput.title || !jsonOutput.summary) {
         throw new Error("Invalid JSON structure");
@@ -204,11 +225,14 @@ async function extractAndSummarize(
       title: jsonOutput.title,
       summary: jsonOutput.summary,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     // Enhanced error handling with specific placeholders
     if (axios.isAxiosError(error) && error.response && error.response.status === 403) {
       return { title: "Access Denied", summary: "Unable to fetch content due to access restrictions." };
-    } else if (error instanceof Error && ["ECONNRESET", "ETIMEDOUT", "ECONNABORTED"].includes((error as any).code)) {
+    } else if (
+      error instanceof Error &&
+      ["ECONNRESET", "ETIMEDOUT", "ECONNABORTED"].includes((error as CustomError).code || "")
+    ) {
       return { title: "Fetch Error", summary: "Unable to fetch content due to network issues." };
     } else {
       console.error(`Error summarizing article ${url}:`, error);
@@ -256,7 +280,7 @@ async function processUrlList(urls: string[], concurrencyLimit: number = 3): Pro
               selected: false,
             };
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error(`Error processing URL ${url}:`, error);
           return {
             id: `custom-${index}`,
@@ -408,7 +432,7 @@ export default async function handler(
       if (shouldProcessSummaries && articles.length > 0) {
         // Process only the first 20 articles to avoid timeouts
         const articlesToProcess = articles.slice(0, 20);
-        const processedArticles = [];
+        const processedArticles: Article[] = [];
         const concurrencyLimit = 2; // Process 3 articles at a time
 
         // Process articles in batches to control concurrency
@@ -438,7 +462,7 @@ export default async function handler(
                 }
 
                 return article;
-              } catch (error) {
+              } catch (error: unknown) {
                 console.error(`Error processing article ${article.link}:`, error);
                 return article;
               }
@@ -488,7 +512,7 @@ export default async function handler(
     return res.status(200).json({
       articles: articles,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching or processing articles:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
     return res.status(500).json({

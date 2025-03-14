@@ -13,16 +13,16 @@ const LinkForm: React.FC<LinkFormProps> = ({ categoryId, categoryName, onLinkAdd
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const validateUrl = url => {
+  const validateUrl = (url: string) => {
     try {
       new URL(url);
       return true;
-    } catch (e) {
-      return false;
+    } catch (e: unknown) {
+      console.error("Invalid URL:", e);
     }
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -73,8 +73,8 @@ const LinkForm: React.FC<LinkFormProps> = ({ categoryId, categoryName, onLinkAdd
           title,
         });
       }
-    } catch (err) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setIsLoading(false);
     }

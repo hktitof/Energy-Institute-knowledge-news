@@ -155,13 +155,15 @@ export default function NewsSearch() {
         throw new Error(data.message || "Failed to fetch news");
       }
 
-      const newsItems = data.articles.map((article: any) => ({
-        title: article.title || "No title available",
-        paragraph: article.description || "No description available",
-        url: article.url,
-        fullContent: article.content || article.description || "No content available",
-        selected: false,
-      }));
+      const newsItems = data.articles.map(
+        (article: { title: string; description: string; url: string; content: string }) => ({
+          title: article.title || "No title available",
+          paragraph: article.description || "No description available",
+          url: article.url,
+          fullContent: article.content || article.description || "No content available",
+          selected: false,
+        })
+      );
 
       setNewsResults(prev => ({ ...prev, [theme]: newsItems }));
     } catch (err) {

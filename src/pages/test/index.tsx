@@ -1,7 +1,7 @@
 // pages/index.js
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, X, ExternalLink, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, X, ExternalLink } from "lucide-react";
 import axios from "axios";
 
 // import fetchCategories from utils.ts
@@ -13,9 +13,9 @@ import { Category, Article } from "../../utils/utils";
 import { useEffect } from "react";
 import { sampleCategory } from "@/utils/sampleCategory";
 import { Loader } from "lucide-react";
-import { Trash, Trash2, RefreshCw, Link, Globe } from "lucide-react";
+import { Trash2, RefreshCw, Link, Globe } from "lucide-react";
 import { toast } from "react-toastify";
-import { promises as fs } from "fs";
+
 import CategoryManager from "@/components/CategoryManager";
 import LinkList from "@/components/LinkList";
 import ArticlesTable from "@/components/ArticlesTable";
@@ -50,43 +50,13 @@ export default function NewsAggregator() {
     }>
   >([]);
 
-  useCategoriesManager(
+  useCategoriesManager({
     categories,
     setCategories,
-    fetchCategories,
-    sampleCategory,
-    false // Set to true for testing, false for production
-  );
-
-  // TODO : remove this lines later as is for testing purposes
-
-  // useEffect(() => {
-  //   console.log("Categories useEffect running, current categories:", categories);
-
-  //   // Check if categories is not an empty array and hasn't been processed yet
-  //   if (categories.length > 0 && !categoriesProcessed.current) {
-  //     console.log("Processing categories for the first time");
-
-  //     // Set your value here (replace this with what you want to assign)
-  //     setCategories(sampleCategory);
-
-  //     // Mark that we've processed categories to prevent this from running again
-  //     categoriesProcessed.current = true;
-
-  //     console.log("Categories processed, selected:", categories[0].name);
-  //   }
-  // }, [categories]);
-
-  // TODO : to here
-
-  // useEffect(() => {
-  //   // call the fetchCategories function when the component mounts
-  //   // TODO : Uncomment this to fetch categories from db
-  //   // fetchCategories(setCategories);
-
-  //   // TODO : and comment this when you finish and want to usee data from db
-  //   setCategories(sampleCategory);
-  // }, []);
+    fetchCategoriesFunction: fetchCategories,
+    sampleData: sampleCategory,
+    isTestMode: false, // Set to true for testing, false for production
+  });
 
   // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
   useEffect(() => {
@@ -166,41 +136,6 @@ export default function NewsAggregator() {
   };
 
   // Toggle article selection
-  interface ToggleArticleSelectionParams {
-    categoryId: number;
-    articleId: string;
-  }
-
-  const toggleArticleSelection = ({ categoryId, articleId }: ToggleArticleSelectionParams): void => {
-    setCategories(
-      categories.map((category: Category) => {
-        if (category.id === categoryId) {
-          return {
-            ...category,
-            articles: category.articles.map((article: Article) => {
-              if (article.id === articleId) {
-                return {
-                  ...article,
-                  selected: !article.selected,
-                };
-              }
-              return article;
-            }),
-          };
-        }
-        return category;
-      })
-    );
-  };
-
-  // Function to fetch news for a category (would be replaced with actual API call)
-  interface FetchNewsForCategory {
-    (categoryId: number, customLinks?: string[], currentCategories?: Category[]): Promise<Article[]>;
-  }
-
-  interface FetchNewsResponse {
-    articles: Article[];
-  }
 
   const extractSummary = (rawSummary: string): string => {
     if (rawSummary.startsWith("```json")) {
@@ -217,31 +152,12 @@ export default function NewsAggregator() {
     return rawSummary;
   };
 
-  interface FetchNewsArticle {
-    id: string;
-    title: string;
-    summary: string;
-    link: string;
-  }
-
-  interface FetchNewsResponse {
-    articles: Article[];
-  }
-
-  interface FetchNewsForCategory {
-    (categoryId: number, customLinks?: string[], currentCategories?: Category[]): Promise<FetchNewsArticle[]>;
-  }
-
-  interface ApiRequestOptions {
-    method: string;
-    headers: {
-      "Content-Type": string;
-    };
-    body: string;
-  }
-
   // Simplified and more robust fetchNewsForCategory function
-  const fetchNewsForCategory = async (categoryId, customLinks = [], currentCategories) => {
+  const fetchNewsForCategory = async (
+    categoryId: number,
+    customLinks: string[] = [],
+    currentCategories: Category[] = []
+  ) => {
     // Get the category data
     const categoryData = currentCategories || categories;
     const category = categoryData.find(cat => cat.id === categoryId);
@@ -316,7 +232,7 @@ export default function NewsAggregator() {
                 fetchedAllArticles: true, // Assuming the API indicates all articles are fetched
                 articles: [
                   ...cat.articles,
-                  ...(data.articles.map(article => ({
+                  ...(data.articles.map((article: { id: number; title: string; summary: string; link: string }) => ({
                     ...article,
                     id: article.id.toString(),
                     summary: extractSummary(article.summary),
@@ -496,11 +412,18 @@ export default function NewsAggregator() {
             // If we have articles, update our local copy of categories
             if (data.articles && data.articles.length > 0 && data.articles[0].title !== "") {
               // Find current category in our local copy
-              const categoryIndex = updatedCategories.findIndex(cat => cat.id === category.id);
+              const categoryIndex: number = updatedCategories.findIndex(cat => cat.id === category.id);
 
               if (categoryIndex !== -1) {
                 // Process articles with proper format
-                const processedArticles = data.articles.map((article, index) => ({
+                interface ArticleFromApi {
+                  id: number;
+                  title: string;
+                  summary: string;
+                  link: string;
+                }
+
+                const processedArticles = data.articles.map((article: ArticleFromApi, index: number) => ({
                   ...article,
                   id: index.toString(),
                   summary: extractSummary(article.summary),
@@ -675,119 +598,128 @@ export default function NewsAggregator() {
     }>;
   }
 
-  const refetchArticles = async ({ categoryId }: RefetchArticlesParams): Promise<void> => {
-    const category = categories.find(cat => cat.id === categoryId);
+  const refetchArticles = useCallback(
+    async ({ categoryId }: RefetchArticlesParams): Promise<void> => {
+      const category = categories.find(cat => cat.id === categoryId);
 
-    if (!category) {
-      console.error(`Category with ID ${categoryId} not found`);
-      return;
-    }
+      if (!category) {
+        console.error(`Category with ID ${categoryId} not found`);
+        return;
+      }
 
-    // Get articles with empty titles or summaries (these need fetching)
-    const articlesToFetch: ArticleToFetch[] = category.articles.filter(
-      article => article.title === "" || article.summary === ""
-    );
-
-    // Early return if no articles need fetching
-    if (articlesToFetch.length === 0) {
-      console.log("All articles are already fetched for this category");
-
-      // Update states once
-      const categoriesUpdates = categories.map(cat =>
-        cat.id === categoryId ? { ...cat, isFetchingNewArticles: false } : cat
+      // Get articles with empty titles or summaries (these need fetching)
+      const articlesToFetch: ArticleToFetch[] = category.articles.filter(
+        article => article.title === "" || article.summary === ""
       );
 
-      const statusUpdates = categoriesStatus.map(status =>
-        status.categoryId === categoryId ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true } : status
-      );
+      // Early return if no articles need fetching
+      if (articlesToFetch.length === 0) {
+        console.log("All articles are already fetched for this category");
 
-      // Batch state updates to reduce re-renders
-      setCategories(categoriesUpdates);
-      setTimeout(() => {
-        setCategoriesStatus(statusUpdates);
-      }, 0);
+        // Update states once
+        const categoriesUpdates = categories.map(cat =>
+          cat.id === categoryId ? { ...cat, isFetchingNewArticles: false } : cat
+        );
 
-      return;
-    }
-
-    // Get the links to the articles that need fetching
-    const linksToFetch = articlesToFetch.map(article => article.link);
-    console.log(`Fetching ${linksToFetch.length} articles for category ${category.name}`);
-
-    try {
-      // Call API to fetch titles and summaries
-      const response = await axios.post<FetchArticlesResponse>("/api/title-summaries-by-links", {
-        links: linksToFetch,
-        maxConcurrent: 5,
-        maxWords: 100,
-      });
-
-      const data = response.data;
-
-      // Update the articles with the fetched data
-      const updatedArticles = category.articles.map(article => {
-        if (article.title === "" || article.summary === "") {
-          // Find the matching result from our API
-          const matchingResult = data.results.find(result => result.url === article.link);
-
-          if (matchingResult) {
-            return {
-              ...article,
-              title: matchingResult.title || "",
-              summary: matchingResult.summary || "",
-            };
-          }
-        }
-        return article;
-      });
-
-      // Prepare updates for both states
-      const categoriesUpdates = categories.map(cat =>
-        cat.id === categoryId ? { ...cat, articles: updatedArticles, isFetchingNewArticles: false } : cat
-      );
-
-      const statusUpdates = categoriesStatus.map(status =>
-        status.categoryId === categoryId ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true } : status
-      );
-
-      // Batch state updates to reduce re-renders
-      setCategories(categoriesUpdates);
-      setTimeout(() => {
-        setCategoriesStatus(statusUpdates);
-      }, 0);
-
-      // set isFetchedAllArticles to true for this category
-      setCategoriesStatus(prevStatus => {
-        return prevStatus.map(status =>
+        const statusUpdates = categoriesStatus.map(status =>
           status.categoryId === categoryId
             ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true }
             : status
         );
-      });
 
-      // Update the refFetchNews button text if it exists
-      if (refFetchNews.current) {
-        refFetchNews.current.innerText = "Fetched";
+        // Batch state updates to reduce re-renders
+        setCategories(categoriesUpdates);
+        setTimeout(() => {
+          setCategoriesStatus(statusUpdates);
+        }, 0);
+
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching article details:", error);
 
-      // Prepare updates for both states
-      const categoriesUpdates = categories.map(cat =>
-        cat.id === categoryId ? { ...cat, isFetchingNewArticles: false } : cat
-      );
+      // Get the links to the articles that need fetching
+      const linksToFetch = articlesToFetch.map(article => article.link);
+      console.log(`Fetching ${linksToFetch.length} articles for category ${category.name}`);
 
-      const statusUpdates = categoriesStatus.map(status =>
-        status.categoryId === categoryId ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true } : status
-      );
+      try {
+        // Call API to fetch titles and summaries
+        const response = await axios.post<FetchArticlesResponse>("/api/title-summaries-by-links", {
+          links: linksToFetch,
+          maxConcurrent: 5,
+          maxWords: 100,
+        });
 
-      // Batch state updates to reduce re-renders
-      setCategories(categoriesUpdates);
-      setTimeout(() => {
-        setCategoriesStatus(statusUpdates);
-      }, 0);
-    }
-  };
+        const data = response.data;
+
+        // Update the articles with the fetched data
+        const updatedArticles = category.articles.map(article => {
+          if (article.title === "" || article.summary === "") {
+            // Find the matching result from our API
+            const matchingResult = data.results.find(result => result.url === article.link);
+
+            if (matchingResult) {
+              return {
+                ...article,
+                title: matchingResult.title || "",
+                summary: matchingResult.summary || "",
+              };
+            }
+          }
+          return article;
+        });
+
+        // Prepare updates for both states
+        const categoriesUpdates = categories.map(cat =>
+          cat.id === categoryId ? { ...cat, articles: updatedArticles, isFetchingNewArticles: false } : cat
+        );
+
+        const statusUpdates = categoriesStatus.map(status =>
+          status.categoryId === categoryId
+            ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true }
+            : status
+        );
+
+        // Batch state updates to reduce re-renders
+        setCategories(categoriesUpdates);
+        setTimeout(() => {
+          setCategoriesStatus(statusUpdates);
+        }, 0);
+
+        // set isFetchedAllArticles to true for this category
+        setCategoriesStatus(prevStatus => {
+          return prevStatus.map(status =>
+            status.categoryId === categoryId
+              ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true }
+              : status
+          );
+        });
+
+        // Update the refFetchNews button text if it exists
+        if (refFetchNews.current) {
+          refFetchNews.current.innerText = "Fetched";
+        }
+      } catch (error) {
+        console.error("Error fetching article details:", error);
+
+        // Prepare updates for both states
+        const categoriesUpdates = categories.map(cat =>
+          cat.id === categoryId ? { ...cat, isFetchingNewArticles: false } : cat
+        );
+
+        const statusUpdates = categoriesStatus.map(status =>
+          status.categoryId === categoryId
+            ? { ...status, isFetchingArticles: false, isFetchedAllArticles: true }
+            : status
+        );
+
+        // Batch state updates to reduce re-renders
+        setCategories(categoriesUpdates);
+        setTimeout(() => {
+          setCategoriesStatus(statusUpdates);
+        }, 0);
+      }
+    },
+    [categories, categoriesStatus, setCategoriesStatus, setCategories, refFetchNews]
+  );
 
   // create a useEffect that will track whenever isFetchingArticles is true, for a category, and if it it is true, it will perform a refetchArticles for that category if only is FetchedAllArticles is false
   useEffect(() => {
@@ -824,9 +756,7 @@ export default function NewsAggregator() {
     };
 
     fetchArticles();
-
-    // Add dependencies that actually matter, not the entire objects
-  }, [categoriesStatus.map(s => `${s.categoryId}-${s.isFetchingArticles}-${s.isFetchedAllArticles}`).join(",")]);
+  }, [categories, categoriesStatus, refetchArticles]);
 
   // create a useEffect that will track when a link has been added to a category, so then it will added to the article array of the category, so the article array if have no article, then it will have a new article with id 1 and empty title, summary, but with the link added from the category links array, it should only run when a new link is added to a category
   // Modify the useEffect that adds links to articles
@@ -974,18 +904,20 @@ export default function NewsAggregator() {
                     {/* Search Terms Section */}
                     {category.searchTerms.length > 0 && (
                       <div className="mb-4">
-                        <div className="flex justify-between items-center mb-2">
+                        {/* <div className="flex justify-between items-center mb-2">
                           <h3 className="text-sm font-medium text-gray-700">Search Terms</h3>
                           <button
-                            className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1"
+                            className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1 hover:cursor-pointer"
                             onClick={() => {
-                              /* Add function to clear all search terms */
+                              setSelectedCategoryName(category.name);
+                              setActiveTab("search-terms");
+                              setSelectedCategoryId(category.id);
                             }}
                           >
-                            <Trash size={12} />
-                            <span>Clear all</span>
+                            <Plus size={12} />
+                            <span>Add Search term</span>
                           </button>
-                        </div>
+                        </div> */}
                         <div className="flex flex-wrap gap-2">
                           {category.searchTerms.map((term, index) => (
                             <div
@@ -1019,11 +951,10 @@ export default function NewsAggregator() {
                       <div className="mb-4">
                         <div className="flex justify-between items-center mb-2">
                           <h3 className="text-sm font-medium text-gray-700">Saved Links</h3>
-                          <div className="flex items-center space-x-2">
+                          {/* <div className="flex items-center space-x-2">
                             <button
                               className="text-xs text-gray-500 hover:text-blue-600 flex items-center hover:cursor-pointer"
                               onClick={() => {
-                                /* Function to add new link */
                                 setSelectedCategoryName(category.name);
                                 setActiveTab("links");
                                 setSelectedCategoryId(category.id);
@@ -1032,7 +963,7 @@ export default function NewsAggregator() {
                               <Plus size={14} className="mr-1 " />
                               Add link
                             </button>
-                          </div>
+                          </div> */}
                         </div>
 
                         {/* Links Grid/List with conditional rendering based on number of links */}

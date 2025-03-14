@@ -3,10 +3,10 @@ import CategoryAdder from "./CategoryAdder";
 import SearchTermAdder from "./SearchTermAdder";
 import { fetchCategories } from "@/utils/utils";
 import type { Category } from "@/utils/utils";
-import { Edit, Plus, Trash2, Settings, ExternalLink, Link as LinkIcon, Type } from "lucide-react";
+import { Plus, Trash2, Settings, ExternalLink, Link as LinkIcon, Type, X } from "lucide-react";
 import { toast } from "react-toastify";
 import LinkForm from "./LinkForm";
-import ArticleSummarizer from "./ArticleSummarizer";
+
 import ArticleSummarizerTab from "./ArticleSummarizerTab";
 export default function CategoryManager({
   newCategoryName,
@@ -26,17 +26,12 @@ export default function CategoryManager({
   setActiveTab: (tab: string | null) => void;
   selectedCategoryName: string;
 }) {
-  const [editingPrompt, setEditingPrompt] = useState(false);
   // this will be used to track if the user is adding a new category and show a loading spinner
   const [adding, setAdding] = useState(false);
 
   const [links, setLinks] = useState<{ id: string; title: string; url: string }[]>([]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-
-  const [summaryPrompt, setSummaryPrompt] = useState(
-    "Summarise the following: #article_content# , DO NOT EXCEED #numbers# words"
-  );
 
   // Update selectedCategoryId whenever selectedCategoryName changes
   useEffect(() => {
@@ -210,8 +205,19 @@ export default function CategoryManager({
 
       {activeTab === "links" && (
         <div className="p-6 bg-white rounded-lg shadow-sm">
-          <div className=""></div>
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">{selectedCategoryName} Links</h2>
+          <div className=" flex justify-between items-center">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-6">{selectedCategoryName} Links</h2>
+            {/* // add hide button which is not rectangle buse like a gray button, that has an 
+            // arrow directed to the top */}
+            <button
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 hover:cursor-pointer"
+              onClick={() => {
+                setActiveTab(null);
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
 
           {/* Links Table */}
           <div className="mb-8">

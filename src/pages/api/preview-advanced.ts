@@ -1,6 +1,6 @@
 // File: pages/api/preview-advanced.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import puppeteer from "puppeteer";
+import puppeteer, { Page } from "puppeteer";
 import { URL } from "url";
 
 type ProxyResponse = {
@@ -77,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         // Convert cookies to format expected by Puppeteer
         const puppeteerCookies = Object.entries(cookies).map(([name, value]) => ({
           name,
-          value: value.toString(), // Ensure value is a string
+          value: value?.toString() || "", // Ensure value is a string
           domain: parsedUrl.hostname, // Use only the hostname without subdomain restrictions
           path: "/",
           // Avoid adding optional fields that might cause validation errors
@@ -220,7 +220,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     console.error("Puppeteer proxy error:", error);
     res.status(500).json({
       error: `Failed to fetch content: ${(error as Error).message}`,
-      stack: process.env.NODE_ENV === "development" ? (error as Error).stack : undefined,
       status: 500,
     });
   } finally {
@@ -232,10 +231,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 // Helper function to attempt to auto-accept cookie notices
 // In preview-advanced.ts, simplify the cookie handling:
-async function autoAcceptCookieNotices(page) {
+async function autoAcceptCookieNotices(page: Page) {
   try {
     // Add a delay to allow cookie banners to appear
-    await page.waitForTimeout(1500);
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     // Use a more targeted approach with fewer selectors
     const cookieSelectors = [
@@ -248,16 +247,17 @@ async function autoAcceptCookieNotices(page) {
     for (const selector of cookieSelectors) {
       try {
         const buttonCount = await page.evaluate(sel => {
-          const buttons = document.querySelectorAll(sel);
+          const buttons = document.querySelectorAll<HTMLElement>(sel);
           buttons.forEach(btn => btn.click());
           return buttons.length;
         }, selector);
 
         if (buttonCount > 0) {
           console.log(`Clicked ${buttonCount} cookie buttons with selector: ${selector}`);
-          await page.waitForTimeout(500);
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-      } catch (e) {
+      } catch (e: unknown) {
+        console.error(`Error clicking cookie button with selector: ${selector}`, e);
         continue;
       }
     }

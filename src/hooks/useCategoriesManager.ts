@@ -1,4 +1,15 @@
 import { useEffect, useRef } from "react";
+import { Category } from "../utils/utils";
+
+type FetchCategoriesFunction = (setCategories: React.Dispatch<React.SetStateAction<Category[]>>) => Promise<void>;
+
+type UseCategoriesManagerProps = {
+  categories: Category[];
+  setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
+  fetchCategoriesFunction: FetchCategoriesFunction;
+  sampleData: Category[];
+  isTestMode?: boolean;
+};
 
 /**
  * Custom hook to manage categories fetching with testing mode support
@@ -10,7 +21,14 @@ import { useEffect, useRef } from "react";
  * @param {Array} sampleData - Sample categories data for testing
  * @param {boolean} isTestMode - Whether to use sample data (true) or fetch from DB (false)
  */
-const useCategoriesManager = (categories, setCategories, fetchCategoriesFunction, sampleData, isTestMode = false) => {
+
+const useCategoriesManager = ({
+  categories,
+  setCategories,
+  fetchCategoriesFunction,
+  sampleData,
+  isTestMode = false,
+}: UseCategoriesManagerProps) => {
   const categoriesProcessed = useRef(false);
 
   // Effect for initial data loading - either sample data or real fetch

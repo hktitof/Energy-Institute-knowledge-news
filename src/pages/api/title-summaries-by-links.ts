@@ -51,43 +51,45 @@ async function extractAndSummarize(
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15",
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
-          "Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1"
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1",
         ];
-        
+
         response = await axiosInstance.get(url, {
           headers: {
             "User-Agent": userAgents[retries % userAgents.length],
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
             "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
+            Connection: "keep-alive",
             "Upgrade-Insecure-Requests": "1",
             "Cache-Control": "max-age=0",
-            "Referer": "https://www.google.com/",
+            Referer: "https://www.google.com/",
           },
         });
-        
+
         break; // Exit the retry loop if successful
       } catch (error) {
         retries++;
         if (retries >= maxRetries) {
           // If it's ACS, try their API if available
-          if (url.includes('pubs.acs.org')) {
+          if (url.includes("pubs.acs.org")) {
             try {
               // For ACS publications, we can try to use their meta tags or API if available
-              const metaTitle = url.split('/').pop() || '';
+              const metaTitle = url.split("/").pop() || "";
               return {
                 title: `ACS Publication: ${metaTitle}`,
-                summary: "This is an academic article from the American Chemical Society. The content requires special access permissions. Consider accessing directly through your institution's subscription or using the DOI to find the paper on other platforms."
+                summary:
+                  "This is an academic article from the American Chemical Society. The content requires special access permissions. Consider accessing directly through your institution's subscription or using the DOI to find the paper on other platforms.",
               };
-            } catch (e) {
+            } catch (e: unknown) {
+              console.error("Error fetching ACS publication meta tags:", e);
               throw error; // Throw the original error if this fallback fails
             }
           } else {
             throw error;
           }
         }
-        
+
         // Wait before retrying (exponential backoff)
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
@@ -180,24 +182,24 @@ async function extractAndSummarize(
     }
 
     // Try to extract meta information first (for paywall sites)
-    const metaTags = document.querySelectorAll('meta');
-    let metaTitle = '';
-    let metaDescription = '';
-    
+    const metaTags = document.querySelectorAll("meta");
+    let metaTitle = "";
+    let metaDescription = "";
+
     metaTags.forEach(tag => {
-      const name = tag.getAttribute('name')?.toLowerCase();
-      const property = tag.getAttribute('property')?.toLowerCase();
-      
-      if (name === 'title' || property === 'og:title') {
-        metaTitle = tag.getAttribute('content') || '';
+      const name = tag.getAttribute("name")?.toLowerCase();
+      const property = tag.getAttribute("property")?.toLowerCase();
+
+      if (name === "title" || property === "og:title") {
+        metaTitle = tag.getAttribute("content") || "";
       }
-      if (name === 'description' || property === 'og:description') {
-        metaDescription = tag.getAttribute('content') || '';
+      if (name === "description" || property === "og:description") {
+        metaDescription = tag.getAttribute("content") || "";
       }
     });
 
     // Get a clean title - try to extract the main title without site name
-    const rawTitle = document.title || metaTitle || '';
+    const rawTitle = document.title || metaTitle || "";
 
     // Find h1 element which often has the main title
     const h1Elements = document.querySelectorAll("h1");
@@ -221,26 +223,29 @@ async function extractAndSummarize(
 
     // Extract all visible text
     const textContent = extractAllVisibleText(document);
-    
+
     // If we got very little content, use meta description as fallback
     const visibleContent = textContent.length > 100 ? textContent : metaDescription || textContent;
 
     // Fallback if we failed to extract meaningful content
     if (!title || !visibleContent || visibleContent.length < 50) {
       // Extract domain name for the title
-      const domain = new URL(url).hostname.replace('www.', '');
-      
-      if (url.includes('pubs.acs.org')) {
-        const doi = url.split('/').pop() || '';
+      const domain = new URL(url).hostname.replace("www.", "");
+
+      if (url.includes("pubs.acs.org")) {
+        const doi = url.split("/").pop() || "";
         return {
           title: `ACS Publication: ${doi}`,
-          summary: "This is a scientific article from the American Chemical Society. The content may require special access permissions."
+          summary:
+            "This is a scientific article from the American Chemical Society. The content may require special access permissions.",
         };
       }
-      
+
       return {
         title: title || `Article from ${domain}`,
-        summary: metaDescription || `This article from ${domain} requires special access. The content might be behind a paywall or requires specific permissions.`
+        summary:
+          metaDescription ||
+          `This article from ${domain} requires special access. The content might be behind a paywall or requires specific permissions.`,
       };
     }
 
@@ -253,7 +258,7 @@ async function extractAndSummarize(
       console.error("Azure OpenAI API configuration is missing");
       return {
         title: title,
-        summary: visibleContent.slice(0, 500) + "..." // Return first 500 chars as fallback
+        summary: visibleContent.slice(0, 500) + "...", // Return first 500 chars as fallback
       };
     }
 
@@ -294,7 +299,7 @@ async function extractAndSummarize(
     if (!aiResponse.ok) {
       return {
         title: title,
-        summary: visibleContent.slice(0, 300) + "..." // Fallback if AI fails
+        summary: visibleContent.slice(0, 300) + "...", // Fallback if AI fails
       };
     }
 
@@ -360,27 +365,30 @@ async function extractAndSummarize(
     };
   } catch (error) {
     console.error(`Error summarizing article ${url}:`, error);
-    
+
     // Special handling for common error types
-    if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+    if (typeof error === 'object' && error !== null && 'code' in error && (error.code === "ECONNRESET" || error.code === "ETIMEDOUT")) {
       // For connection issues, return a friendly message
-      const domain = url.includes('://') ? new URL(url).hostname : url.split('/')[0];
+      const domain = url.includes("://") ? new URL(url).hostname : url.split("/")[0];
       return {
-        title: `Article from ${domain.replace('www.', '')}`,
-        summary: `Unable to access this article due to connection issues. The website might be temporarily unavailable or have strict access controls.`
+        title: `Article from ${domain.replace("www.", "")}`,
+        summary: `Unable to access this article due to connection issues. The website might be temporarily unavailable or have strict access controls.`,
       };
     }
-    
-    if (error.response && error.response.status === 403) {
+
+    if (typeof error === 'object' && error !== null && 'response' in error && error.response && typeof error.response === 'object' && 'status' in error.response && error.response.status === 403) {
       // For forbidden errors, likely a paywall
-      const domain = url.includes('://') ? new URL(url).hostname : url.split('/')[0];
+      const domain = url.includes("://") ? new URL(url).hostname : url.split("/")[0];
       return {
-        title: `Article from ${domain.replace('www.', '')}`,
-        summary: `This article appears to be behind a paywall or requires special access permissions. Consider accessing through your institution's subscription or searching for an open-access version.`
+        title: `Article from ${domain.replace("www.", "")}`,
+        summary: `This article appears to be behind a paywall or requires special access permissions. Consider accessing through your institution's subscription or searching for an open-access version.`,
       };
     }
-    
-    return null;
+
+    return {
+      title: `Error processing article`,
+      summary: `An unexpected error occurred while processing this article.`,
+    };
   }
 }
 
@@ -415,9 +423,9 @@ export default async function handler(
         batch.map(async item => {
           try {
             // Handle both string URLs and object with url property
-            const url = typeof item === 'string' ? item : item.url;
-            const id = typeof item === 'string' ? undefined : item.id;
-            
+            const url = typeof item === "string" ? item : item.url;
+            const id = typeof item === "string" ? undefined : item.id;
+
             console.log(`Processing link: ${url}`);
             const result = await extractAndSummarize(url, maxWords);
 
@@ -430,7 +438,7 @@ export default async function handler(
               };
             } else {
               // For completely failed extractions, return an informative message
-              const domain = url.includes('://') ? new URL(url).hostname.replace('www.', '') : url.split('/')[0];
+              const domain = url.includes("://") ? new URL(url).hostname.replace("www.", "") : url.split("/")[0];
               return {
                 id,
                 url,
@@ -440,13 +448,13 @@ export default async function handler(
               };
             }
           } catch (error) {
-            const url = typeof item === 'string' ? item : item.url;
-            const id = typeof item === 'string' ? undefined : item.id;
-            
+            const url = typeof item === "string" ? item : item.url;
+            const id = typeof item === "string" ? undefined : item.id;
+
             console.error(`Error processing link ${url}:`, error);
-            
+
             // Even on error, return something usable
-            const domain = url.includes('://') ? new URL(url).hostname.replace('www.', '') : url.split('/')[0];
+            const domain = url.includes("://") ? new URL(url).hostname.replace("www.", "") : url.split("/")[0];
             return {
               id,
               url,

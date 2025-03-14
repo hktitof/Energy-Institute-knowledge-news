@@ -1,15 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
 import { Plus } from "react-feather"; // adjust import based on your icon library
-import { Category } from "../types";
-interface DummyArticle {
-  id: string;
-  title: string;
-  content: string;
-  summary: string;
-  link: string;
-  selected: boolean;
-}
+import { Category } from "../utils/utils";
+
 const SearchTermAdder = ({
   categories,
   fetchCategories,

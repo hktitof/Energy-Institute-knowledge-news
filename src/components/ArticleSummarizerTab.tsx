@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Edit, ExternalLink, AlertCircle, FileJson, Link, FileText } from "lucide-react";
+import { Copy, Check, Edit, ExternalLink, AlertCircle, Link, FileText } from "lucide-react";
 
 // Define proper types for the API response
 interface SummaryResult {
@@ -52,7 +52,12 @@ Return your response as a JSON object with this exact format:
     try {
       const parsedUrl = new URL(url.trim());
       return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("URL validation error:", error.message);
+      } else {
+        console.error("Unknown URL validation error");
+      }
       return false;
     }
   };
@@ -154,10 +159,6 @@ Return your response as a JSON object with this exact format:
   };
 
   // Function to get JSON string for copying
-  const getJsonString = () => {
-    if (!result) return "";
-    return JSON.stringify(result.jsonOutput, null, 2);
-  };
 
   // Function to remove JSON formatting
   const removeJsonString = (text: string) => {

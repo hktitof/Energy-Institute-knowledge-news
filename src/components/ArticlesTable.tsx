@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ExternalLink, Edit, Save, Copy, Eye, AlertCircle } from "lucide-react";
 import { Category, Article } from "@/utils/utils";
+import Image from "next/image";
 
 // Define types for the component props and data structure
 interface ToggleArticleSelectionParams {
@@ -44,7 +45,6 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     setEditTitle(article.title || "");
     setEditSummary(article.summary || "");
     // categories articles title and summary based on article id
-    
   };
 
   // Toggle article selection
@@ -353,7 +353,8 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                       {(() => {
                         try {
                           return new URL(previewArticle.link).hostname;
-                        } catch (e) {
+                        } catch (e: unknown) {
+                          console.error("Error parsing URL:", e);
                           return previewArticle.link;
                         }
                       })()}
@@ -410,10 +411,14 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                     </div>
                     <p>Interactive content couldn&apos;t be displayed safely. Showing a screenshot instead.</p>
                   </div>
-                  <img
+
+                  <Image
                     src={previewScreenshot}
                     alt={`Screenshot of ${previewArticle?.title || "article"}`}
                     className="max-w-full border border-gray-200 rounded shadow-sm"
+                    width={100} // Set the width of the image
+                    height={300} // Set the height of the image
+                    loading="lazy"
                   />
                 </div>
               )}
