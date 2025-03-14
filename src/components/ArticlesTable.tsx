@@ -108,8 +108,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     }, 2000);
   };
 
-  // Update handlePreview function
-  // Modify your handlePreview function
+  // Update the handlePreview function in your ArticlesTable component
   const handlePreview = async (article: Article) => {
     setPreviewArticle(article);
     setIsLoading(true);
@@ -119,15 +118,17 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     setUseScreenshot(false);
 
     try {
-      console.log(`Fetching preview for: ${article.link}`); // Add debugging
-      const response = await fetch(`/api/preview-advanced?url=${encodeURIComponent(article.link)}`, {
+      console.log(`Fetching preview for: ${article.link}`);
+
+      // Use our new optimized endpoint
+      const response = await fetch(`/api/preview-optimized?url=${encodeURIComponent(article.link)}`, {
         credentials: "include",
       });
 
-      console.log(`Response status: ${response.status}`); // Add debugging
+      console.log(`Response status: ${response.status}`);
 
       const data = await response.json();
-      console.log("Preview data:", data); // Add debugging
+      console.log("Preview data:", data);
 
       if (data.error) {
         console.error("Preview API returned error:", data.error);
@@ -136,6 +137,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
 
       if (data.html) {
         setPreviewHtml(data.html);
+        console.log(`Preview rendered using ${data.method || "unknown"} method`);
       } else {
         console.error("No HTML content received");
         throw new Error("No HTML content received");
