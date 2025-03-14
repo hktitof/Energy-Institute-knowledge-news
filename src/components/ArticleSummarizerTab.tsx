@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Edit, ExternalLink, AlertCircle, Link, FileText } from "lucide-react";
+import { Copy, Check, Edit, ExternalLink, AlertCircle, Link, FileText, X } from "lucide-react";
 
 // Define proper types for the API response
 interface SummaryResult {
@@ -22,7 +22,13 @@ interface ErrorResult {
 
 type ApiResponse = SummaryResult | ErrorResult;
 
-const ArticleSummarizer = () => {
+const ArticleSummarizerTab = ({
+  setActiveParentTab,
+  activeParentTab,
+}: {
+  setActiveParentTab: (tab: string | null) => void;
+  activeParentTab: string | null;
+}) => {
   const [url, setUrl] = useState("");
   const [pastedContent, setPastedContent] = useState("");
   const [pastedTitle, setPastedTitle] = useState("");
@@ -30,7 +36,7 @@ const ArticleSummarizer = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<SummaryResult | null>(null);
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activeTab, setActiveTab] = useState<"summary" | "original" | "template">("summary");
   const [copied, setCopied] = useState<string | null>(null);
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [inputMethod, setInputMethod] = useState<"url" | "paste">("url");
@@ -173,7 +179,16 @@ Return your response as a JSON object with this exact format:
   return (
     <div className="w-full max-w-4xl bg-white rounded-lg shadow-md p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Article Summarizer</h1>
+        <div className="flex justify-between">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Article Summarizer</h1>
+          <button
+            onClick={() => setActiveParentTab(null)}
+            className="bg-gray-400 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hover:cursor-pointer"
+          >
+            <X size={16} className="mr-1" />
+            {/* Close */}
+          </button>
+        </div>
         <p className="text-gray-600">Extract and summarize content from any article URL or pasted text</p>
       </div>
 
@@ -493,4 +508,4 @@ Return your response as a JSON object with this exact format:
   );
 };
 
-export default ArticleSummarizer;
+export default ArticleSummarizerTab;

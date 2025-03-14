@@ -25,6 +25,7 @@ export default function CategoryManager({
   activeTab: string | null;
   setActiveTab: (tab: string | null) => void;
   selectedCategoryName: string;
+  
 }) {
   // this will be used to track if the user is adding a new category and show a loading spinner
   const [adding, setAdding] = useState(false);
@@ -117,7 +118,7 @@ export default function CategoryManager({
   console.log("Selected Category ID: ", selectedCategoryId);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-100">
+    <div className="w-full bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-100">
       {/* Tab Navigation */}
       <div className="flex border-b overflow-x-auto scrollbar-hide ">
         <button
@@ -339,7 +340,7 @@ export default function CategoryManager({
         </div>
       )}
 
-      {activeTab === "template" && <ArticleSummarizerTab />}
+      {activeTab === "template" && <ArticleSummarizerTab  setActiveParentTab={setActiveTab} activeParentTab={activeTab}/>} 
 
       <style jsx>{`
         @keyframes fadeIn {

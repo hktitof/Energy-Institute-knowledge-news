@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Category } from "../utils/utils";
 
 type FetchCategoriesFunction = (setCategories: React.Dispatch<React.SetStateAction<Category[]>>) => Promise<void>;
@@ -9,6 +9,10 @@ type UseCategoriesManagerProps = {
   fetchCategoriesFunction: FetchCategoriesFunction;
   sampleData: Category[];
   isTestMode?: boolean;
+};
+
+type UseCategoriesManagerReturn = {
+  isLoading: boolean;
 };
 
 /**
@@ -28,17 +32,21 @@ const useCategoriesManager = ({
   fetchCategoriesFunction,
   sampleData,
   isTestMode = false,
-}: UseCategoriesManagerProps) => {
+}: UseCategoriesManagerProps): UseCategoriesManagerReturn => {
   const categoriesProcessed = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Effect for initial data loading - either sample data or real fetch
+  // Effect for initial data loading
   useEffect(() => {
     if (isTestMode) {
       console.log("TEST MODE: Using sample categories data");
       setCategories(sampleData);
     } else {
       console.log("PRODUCTION MODE: Fetching categories from database");
-      fetchCategoriesFunction(setCategories);
+      setIsLoading(true);
+      fetchCategoriesFunction(setCategories).finally(() => {
+        setIsLoading(false);
+      });
     }
   }, [fetchCategoriesFunction, sampleData, isTestMode, setCategories]);
 
@@ -60,6 +68,7 @@ const useCategoriesManager = ({
       }
     }
   }, [categories, isTestMode]);
+  return { isLoading };
 };
 
 export default useCategoriesManager;

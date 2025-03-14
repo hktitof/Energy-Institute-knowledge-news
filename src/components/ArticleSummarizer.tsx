@@ -85,6 +85,7 @@ const ArticleSummarizer = () => {
   return (
     <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mt-8">
       <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Article Summarizer</h1>
+      {/* // add a Hide button that will hide this section, with good appealing UI and UX  */}
 
       <div className="mb-4">
         <input

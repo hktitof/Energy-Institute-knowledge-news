@@ -50,12 +50,12 @@ export default function NewsAggregator() {
     }>
   >([]);
 
-  useCategoriesManager({
+  const { isLoading } = useCategoriesManager({
     categories,
     setCategories,
     fetchCategoriesFunction: fetchCategories,
     sampleData: sampleCategory,
-    isTestMode: false, // Set to true for testing, false for production
+    isTestMode: true, // Set to true for testing, false for production
   });
 
   // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
@@ -821,6 +821,16 @@ export default function NewsAggregator() {
 
         {/* Categories container with scroll */}
         <div className="flex-grow overflow-y-auto pb-20 pl-3 pr-3 pt-3">
+          {/* // add Loading UI effect by checking isLoading */}
+          {isLoading && (
+            // add a div that will be shown when the categories been fetching, use isLoading to check that and update UI perfectly
+            <div className="flex justify-center items-center h-full">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900">
+
+              </div>
+            </div>
+          )}
+
           {categories.map(category => (
             <div
               key={category.id}

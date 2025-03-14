@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { ExternalLink, Edit, Save, Copy, Eye, AlertCircle } from "lucide-react";
+import { ExternalLink, Edit, Save, Copy, Eye, Check } from "lucide-react";
 import { Category, Article } from "@/utils/utils";
 import Image from "next/image";
+import { AlertCircle } from "lucide-react";
 
 // Define types for the component props and data structure
 interface ToggleArticleSelectionParams {
@@ -29,7 +30,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
   const [useScreenshot, setUseScreenshot] = useState(false);
 
-  const refCopy = React.useRef<HTMLButtonElement>(null);
+  const [copiedArticleId, setCopiedArticleId] = useState<string | null>(null);
 
   // Reset preview states when closing the modal
   const resetPreviewStates = () => {
@@ -96,17 +97,15 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   };
 
   // Function to copy article link to clipboard
-  const handleCopyLink = (link: string) => {
+  // Replace your handleCopyLink function with this improved version
+  const handleCopyLink = (articleId: string, link: string) => {
     navigator.clipboard.writeText(link);
-    // access refCopy and add UI changes, for one second
-    if (refCopy.current) {
-      refCopy.current.style.opacity = "1";
-      setTimeout(() => {
-        if (refCopy.current) {
-          refCopy.current.style.opacity = "0";
-        }
-      });
-    }
+    setCopiedArticleId(articleId);
+
+    // Reset after 2 seconds
+    setTimeout(() => {
+      setCopiedArticleId(null);
+    }, 2000);
   };
 
   // Update handlePreview function
@@ -200,6 +199,22 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
               </td>
+
+              <td className=" py-4">
+                <div
+                  className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
+                    article.title?.includes("Access Denied") ||
+                    article.title?.includes("Fetch Error") ||
+                    article.title?.includes("Error")
+                      ? "text-red-600 font-bold"
+                      : "text-gray-900"
+                  }`}
+                >
+                  {/* // print article id and add +1 to it make sure it's number then present it */}
+                  {Number(article.id) + 1}
+                </div>
+              </td>
+
               <td className="px-6 py-4">
                 {editingArticle === article.id ? (
                   <input
@@ -245,50 +260,58 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                 )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex space-x-2">
+                <div className="flex justify-end gap-2">
                   {editingArticle === article.id ? (
                     <button
                       onClick={() => handleSaveEdit(category.id, article.id)}
-                      className="text-green-600 hover:text-green-900 flex items-center hover:cursor-pointer"
+                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                     >
-                      <Save size={16} className="mr-1" />
+                      <Save size={14} className="mr-1" />
                       Save
                     </button>
                   ) : (
                     <button
                       onClick={() => handleEditClick(article)}
-                      className="text-gray-600 hover:text-gray-900 flex items-center hover:cursor-pointer"
+                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                     >
-                      <Edit size={16} className="mr-1" />
+                      <Edit size={14} className="mr-1" />
                       Edit
                     </button>
                   )}
-                  <a
-                    href={article.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-900 flex items-center hover:cursor-pointer"
-                  >
-                    <ExternalLink size={16} className="mr-1" />
-                    Link
-                  </a>
-                  <button
-                    ref={refCopy}
-                    onClick={() => {
-                      handleCopyLink(article.link);
-                    }}
-                    className="text-purple-600 hover:text-purple-900 flex items-center hover:cursor-pointer"
-                  >
-                    <Copy size={16} className="mr-1" />
-                    Copy
-                  </button>
-                  <button
-                    onClick={() => handlePreview(article)}
-                    className="text-indigo-600 hover:text-indigo-900 flex items-center hover:cursor-pointer"
-                  >
-                    <Eye size={16} className="mr-1" />
-                    Preview
-                  </button>
+
+                  <div className="flex border-l pl-2 ml-1">
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => handlePreview(article)}
+                        className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors hover:cursor-pointer"
+                        title="Preview"
+                      >
+                        <Eye size={16} />
+                      </button>
+
+                      <a
+                        href={article.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                        title="Open link"
+                      >
+                        <ExternalLink size={16} />
+                      </a>
+
+                      <button
+                        onClick={() => handleCopyLink(article.id, article.link)}
+                        className={`p-1.5 rounded-full transition-colors ${
+                          copiedArticleId === article.id
+                            ? "text-green-600 bg-green-50"
+                            : "text-gray-600 hover:text-purple-600 hover:bg-purple-50 hover:cursor-pointer"
+                        }`}
+                        title={copiedArticleId === article.id ? "Copied!" : "Copy link"}
+                      >
+                        {copiedArticleId === article.id ? <Check size={16} /> : <Copy size={16} />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -362,7 +385,10 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                   </div>
                 )}
               </div>
-              <button onClick={handleClosePreview} className="text-gray-400 hover:text-gray-500 focus:outline-none">
+              <button
+                onClick={handleClosePreview}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none hover:cursor-pointer"
+              >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
