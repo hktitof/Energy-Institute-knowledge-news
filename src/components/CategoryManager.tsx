@@ -38,19 +38,21 @@ export default function CategoryManager({
     "Summarise the following: #article_content# , DO NOT EXCEED #numbers# words"
   );
 
-  // set the selected category id when it's null and use the selectedCategoryName to find the category id
+  // Update selectedCategoryId whenever selectedCategoryName changes
   useEffect(() => {
-    if (!selectedCategoryId && selectedCategoryName) {
-      const category = categories.find(category => category.name === selectedCategoryName);
-      if (category) {
-        setSelectedCategoryId(category.id);
-      }
+    // Find the category with the matching name
+    const category = categories.find(category => category.name === selectedCategoryName);
+
+    if (category) {
+      console.log("Updating selectedCategoryId based on name change:", category.id);
+      setSelectedCategoryId(category.id);
+    } else {
+      // Reset if no matching category is found
+      setSelectedCategoryId(null);
     }
-  }, [selectedCategoryName, categories, selectedCategoryId]);
+  }, [selectedCategoryName, categories]);
 
   // fetch links when the selected category id changes
-
-  // create a useEffect that will update links whenever the selectedCategoryId changes
   useEffect(() => {
     if (selectedCategoryId) {
       const category = categories.find(category => category.id === selectedCategoryId);
@@ -59,21 +61,6 @@ export default function CategoryManager({
       }
     }
   }, [selectedCategoryId, categories]);
-
-  // update links whenever the categories links change
-  useEffect(() => {
-    // find the current category id by using selectedCategoryName, so loop over categories and find the category with the same name
-    const currentCategoryId = categories.find(category => category.name === selectedCategoryName)?.id;
-    if (currentCategoryId) {
-      const category = categories.find(category => category.id === currentCategoryId);
-      if (category) {
-        setLinks(category.links.map(link => ({ ...link, id: link.id.toString(), title: link.title || "" })));
-      }
-    }
-    // print that this useEffect is rendering with unique id WW11
-  }, [categories]);
-
-  // update links whenever the links state changes
 
   // Function to toggle tabs
   const toggleTab = (tab: string) => {
@@ -130,6 +117,10 @@ export default function CategoryManager({
     setShowConfirmation(null);
   };
 
+  // Debug logs
+  console.log("Selected Category Name: ", selectedCategoryName);
+  console.log("Selected Category ID: ", selectedCategoryId);
+
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-100">
       {/* Tab Navigation */}
@@ -158,19 +149,21 @@ export default function CategoryManager({
           Search Terms
         </button>
 
-        <button
-          className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
-            activeTab === "links"
-              ? "border-blue-600 text-blue-600 bg-blue-50"
-              : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-          } hover:cursor-pointer`}
-          onClick={() => {
-            setActiveTab(null);
-          }}
-        >
-          <LinkIcon size={16} className="mr-2" />
-          Manage Links
-        </button>
+        {activeTab === "links" && (
+          <button
+            className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
+              activeTab === "links"
+                ? "border-blue-600 text-blue-600 bg-blue-50"
+                : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+            } hover:cursor-pointer`}
+            onClick={() => {
+              setActiveTab(null);
+            }}
+          >
+            <LinkIcon size={16} className="mr-2" />
+            Manage Links
+          </button>
+        )}
 
         <button
           className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
@@ -217,6 +210,7 @@ export default function CategoryManager({
 
       {activeTab === "links" && (
         <div className="p-6 bg-white rounded-lg shadow-sm">
+          <div className=""></div>
           <h2 className="text-2xl font-semibold text-gray-800 mb-6">{selectedCategoryName} Links</h2>
 
           {/* Links Table */}
@@ -339,69 +333,7 @@ export default function CategoryManager({
         </div>
       )}
 
-      {activeTab === "template" && (
-        // <div className="p-5 bg-white animate-fadeIn">
-        //   <div className="flex justify-between items-center mb-4">
-        //     <h3 className="text-lg font-medium text-gray-800">Summary Prompt Template</h3>
-        //     <button
-        //       onClick={() => setEditingPrompt(!editingPrompt)}
-        //       className="text-blue-600 hover:text-blue-800 flex items-center text-sm font-medium px-3 py-1 rounded-md hover:bg-blue-50 transition-colors duration-200"
-        //     >
-        //       <Edit size={16} className="mr-1" />
-        //       {editingPrompt ? "Save" : "Edit"}
-        //     </button>
-        //   </div>
-
-        //   {editingPrompt ? (
-        //     <textarea
-        //       value={summaryPrompt}
-        //       onChange={e => setSummaryPrompt(e.target.value)}
-        //       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-36 text-sm"
-        //       placeholder="Enter your summary prompt template..."
-        //     />
-        //   ) : (
-        //     <div className="p-4 bg-gray-50 rounded-md text-gray-700 border border-gray-100 text-sm whitespace-pre-wrap min-h-[9rem]">
-        //       {summaryPrompt}
-        //     </div>
-        //   )}
-
-        //   <div className="mt-4 p-4 bg-blue-50 rounded-md text-sm text-blue-700 border border-blue-100">
-        //     <p className="font-medium mb-2">Template Variables:</p>
-        //     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        //       <div className="flex items-center p-2 bg-white rounded border border-blue-200">
-        //         <code className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-mono text-xs">#article_content#</code>
-        //         <span className="ml-2 text-xs">Insert article content</span>
-        //       </div>
-        //       <div className="flex items-center p-2 bg-white rounded border border-blue-200">
-        //         <code className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-mono text-xs">#numbers#</code>
-        //         <span className="ml-2 text-xs">Insert word count</span>
-        //       </div>
-        //     </div>
-        //   </div>
-        // </div>
-        <ArticleSummarizerTab />
-      )}
-
-      {/* Show a welcome message if no tab is selected */}
-      {/* {!activeTab && (
-        <div className="p-8 text-center animate-fadeIn">
-          <div className="text-gray-400 mb-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-12 w-12 mx-auto"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-700 mb-2">Category Management Tools</h3>
-          <p className="text-gray-500 max-w-md mx-auto">
-            Select a tab above to manage your categories, search terms, links, or summary template.
-          </p>
-        </div>
-      )} */}
+      {activeTab === "template" && <ArticleSummarizerTab />}
 
       <style jsx>{`
         @keyframes fadeIn {

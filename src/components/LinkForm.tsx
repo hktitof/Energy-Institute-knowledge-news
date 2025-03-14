@@ -80,6 +80,13 @@ const LinkForm: React.FC<LinkFormProps> = ({ categoryId, categoryName, onLinkAdd
     }
   };
 
+  // print link form data that will be submitted to the api
+  console.log({
+    categoryId,
+    categoryName,
+    onLinkAdded,
+  });
+
   return (
     <div className="bg-gray-50 p-4 rounded-lg shadow">
       <h3 className="text-lg font-medium text-gray-700 mb-4">Add New Link</h3>

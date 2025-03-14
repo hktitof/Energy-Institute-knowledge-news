@@ -19,6 +19,7 @@ import { promises as fs } from "fs";
 import CategoryManager from "@/components/CategoryManager";
 import LinkList from "@/components/LinkList";
 import ArticlesTable from "@/components/ArticlesTable";
+import useCategoriesManager from "@/hooks/useCategoriesManager";
 
 export default function NewsAggregator() {
   // Declare a state variable called categories and set it to an empty array of Category objects
@@ -38,6 +39,8 @@ export default function NewsAggregator() {
   // declare which category is is being fetching
   const [categoriesFetching, setCategoriesFetching] = useState<number | null>(null);
 
+  const [isFetchingAllNewsByButton, setIsFetchingAllNewsByButton] = useState<boolean>(false);
+
   // create a useState that will track the each category that is being fetched, ti should have categoryId and isFetchedAllArticles, isFetchingArticles, and it will be updated as long as there is a new category that is being fetched
   const [categoriesStatus, setCategoriesStatus] = useState<
     Array<{
@@ -47,10 +50,15 @@ export default function NewsAggregator() {
     }>
   >([]);
 
-  // TODO : remove this lines later as is for testing purposes
+  useCategoriesManager(
+    categories,
+    setCategories,
+    fetchCategories,
+    sampleCategory,
+    false // Set to true for testing, false for production
+  );
 
-  // Add this at the top of your component, outside any effects or handlers
-  // const categoriesProcessed = useRef(false);
+  // TODO : remove this lines later as is for testing purposes
 
   // useEffect(() => {
   //   console.log("Categories useEffect running, current categories:", categories);
@@ -67,9 +75,18 @@ export default function NewsAggregator() {
 
   //     console.log("Categories processed, selected:", categories[0].name);
   //   }
-  // }, [categories]); // Only re-run when categories changes
+  // }, [categories]);
 
   // TODO : to here
+
+  // useEffect(() => {
+  //   // call the fetchCategories function when the component mounts
+  //   // TODO : Uncomment this to fetch categories from db
+  //   // fetchCategories(setCategories);
+
+  //   // TODO : and comment this when you finish and want to usee data from db
+  //   setCategories(sampleCategory);
+  // }, []);
 
   // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
   useEffect(() => {
@@ -86,15 +103,6 @@ export default function NewsAggregator() {
       }))
     );
   }, [categories]);
-
-  useEffect(() => {
-    // call the fetchCategories function when the component mounts
-    // TODO : Uncomment this to fetch categories from db
-    fetchCategories(setCategories);
-
-    // TODO : and comment this when you finish and want to usee data from db
-    // setCategories(sampleCategory);
-  }, []);
 
   const [loadingSearchTermId, setLoadingSearchTermId] = useState<number | null>(null); // Track loading state
 
@@ -245,7 +253,9 @@ export default function NewsAggregator() {
 
     // Set loading state
     setCategories(prevCategories =>
-      prevCategories.map(cat => (cat.id === categoryId ? { ...cat, isFetchingNewArticles: true } : cat))
+      prevCategories.map(cat =>
+        cat.id === categoryId ? { ...cat, isFetchingNewArticles: true, fetchedAllArticles: false } : cat
+      )
     );
 
     // Log what we're doing to help with debugging
@@ -303,6 +313,7 @@ export default function NewsAggregator() {
               return {
                 ...cat,
                 isFetchingNewArticles: false,
+                fetchedAllArticles: true, // Assuming the API indicates all articles are fetched
                 articles: [
                   ...cat.articles,
                   ...(data.articles.map(article => ({
@@ -374,6 +385,7 @@ export default function NewsAggregator() {
   const fetchAllNews = async () => {
     // Show initial feedback to user
     toast.info("Starting to fetch news for all categories...");
+    setIsFetchingAllNewsByButton(true);
 
     // Create a local copy of category IDs to track which ones were originally open
     const openCategoryIds = new Set(categories.filter(cat => cat.showTable).map(cat => cat.id));
@@ -554,6 +566,9 @@ export default function NewsAggregator() {
 
       // Reset the categoriesFetching state
       setCategoriesFetching(null);
+
+      // set setIsFetchingAllNewsByButton to false
+      setIsFetchingAllNewsByButton(false);
 
       toast.success("Completed fetching news for all categories");
     } catch (error) {
@@ -1158,19 +1173,19 @@ export default function NewsAggregator() {
         <div className="absolute bottom-0 left-0 w-1/3 p-4 bg-white border-t border-gray-200">
           <button
             className={`w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition shadow-md hover:cursor-pointer flex items-center justify-center gap-1
-              ${categories.some(category => category.isFetchingNewArticles) ? "opacity-50 hover:cursor-wait" : ""}
+              ${isFetchingAllNewsByButton ? "opacity-50 hover:cursor-wait" : ""}
               `}
-            onClick={fetchAllNews}
-            disabled={categories.some(category => category.isFetchingNewArticles)}
+            onClick={() => {
+              fetchAllNews();
+            }}
+            disabled={isFetchingAllNewsByButton}
           >
-            {categories.some(category => category.isFetchingNewArticles) ? (
+            {isFetchingAllNewsByButton ? (
               <RefreshCw className="animate-spin text-white" size={14} />
             ) : (
               <RefreshCw size={14} />
             )}
-            <span key="fetch-all-news">
-              {categories.some(category => category.isFetchingNewArticles) ? "Fetching All News" : "Fetch All News"}
-            </span>
+            <span key="fetch-all-news">{isFetchingAllNewsByButton ? "Fetching All News" : "Fetch All News"}</span>
           </button>
         </div>
       </div>
