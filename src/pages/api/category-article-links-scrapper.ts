@@ -17,6 +17,9 @@ interface CustomError extends Error {
   code?: string;
 }
 
+// Add this at the top of your file
+const isDevelopment = process.env.NODE_ENV !== "production";
+
 async function extractAndSummarize(url: string, maxWords: number = 100): Promise<{ title: string; summary: string }> {
   try {
     // Fetch the HTML content with retry logic
@@ -33,7 +36,7 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
         });
       },
       {
-        retries: 3, // Retry up to 3 times
+        retries: 1, // Retry up to 3 times
         minTimeout: 1000, // Start with 1-second delay
         factor: 2, // Exponential backoff
         onRetry: (error: Error) => {
@@ -124,13 +127,13 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
     const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME;
 
     if (!endpoint || !apiKey || !deploymentName) {
-      console.error("Azure OpenAI API configuration is missing");
+      if (isDevelopment) console.error("Azure OpenAI API configuration is missing");
       return { title: "Configuration Error", summary: "Azure OpenAI API configuration is missing." };
     }
 
     let aiResponse;
     let retries = 0;
-    const maxRetries = 5;
+    const maxRetries = 2; // maximum number of retries
     let delay = 5000;
 
     while (retries <= maxRetries) {
@@ -171,9 +174,10 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
         if (aiResponse.ok) break;
 
         if (aiResponse.status === 429) {
-          console.log(
-            `Rate limit exceeded (attempt ${retries + 1}/${maxRetries + 1}). Retrying after ${delay / 1000} seconds.`
-          );
+          if (isDevelopment)
+            console.log(
+              `Rate limit exceeded (attempt ${retries + 1}/${maxRetries + 1}). Retrying after ${delay / 1000} seconds.`
+            );
           const retryAfter = aiResponse.headers.get("retry-after");
           const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : delay;
           await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -184,7 +188,8 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
 
         throw new Error(`Azure OpenAI API returned status ${aiResponse.status}`);
       } catch (error: unknown) {
-        console.error(`Error calling Azure OpenAI API (attempt ${retries + 1}/${maxRetries + 1}):`, error);
+        if (isDevelopment)
+          console.error(`Error calling Azure OpenAI API (attempt ${retries + 1}/${maxRetries + 1}):`, error);
         if (retries >= maxRetries) {
           throw error;
         }
@@ -212,7 +217,7 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
         throw new Error("Invalid JSON structure");
       }
     } catch (error) {
-      console.error("Failed to parse JSON from API response:", error);
+      if (isDevelopment) console.error("Failed to parse JSON from API response:", error);
       const titleMatch = aiOutput.match(/"title"\s*:\s*"((?:\\"|[^"])*)"/);
       const summaryMatch = aiOutput.match(/"summary"\s*:\s*"((?:\\"|[^"])*)"/);
       jsonOutput = {
@@ -235,7 +240,7 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
     ) {
       return { title: "Fetch Error", summary: "Unable to fetch content due to network issues." };
     } else {
-      console.error(`Error summarizing article ${url}:`, error);
+      if (isDevelopment) console.error(`Error summarizing article ${url}:`, error);
       return { title: "Error", summary: "Failed to process article." };
     }
   }
@@ -244,21 +249,22 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
 // Function to process a list of URLs and return articles with titles and summaries
 // Process URLs with throttling to avoid rate limits
 async function processUrlList(urls: string[], concurrencyLimit: number = 3): Promise<Article[]> {
-  console.log(`Processing ${urls.length} custom URLs with concurrency limit of ${concurrencyLimit}`);
+  if (isDevelopment) console.log(`Processing ${urls.length} custom URLs with concurrency limit of ${concurrencyLimit}`);
 
   const articles: Article[] = [];
 
   // Process URLs in batches to control concurrency
   for (let i = 0; i < urls.length; i += concurrencyLimit) {
     const batch = urls.slice(i, i + concurrencyLimit);
-    console.log(
-      `Processing batch ${Math.floor(i / concurrencyLimit) + 1}/${Math.ceil(urls.length / concurrencyLimit)}`
-    );
+    if (isDevelopment)
+      console.log(
+        `Processing batch ${Math.floor(i / concurrencyLimit) + 1}/${Math.ceil(urls.length / concurrencyLimit)}`
+      );
 
     const batchResults = await Promise.allSettled(
       batch.map(async (url, batchIndex) => {
         const index = i + batchIndex;
-        console.log(`Processing custom URL ${index + 1}/${urls.length}: ${url}`);
+        if (isDevelopment) console.log(`Processing custom URL ${index + 1}/${urls.length}: ${url}`);
 
         try {
           const result = await extractAndSummarize(url);
@@ -281,7 +287,7 @@ async function processUrlList(urls: string[], concurrencyLimit: number = 3): Pro
             };
           }
         } catch (error: unknown) {
-          console.error(`Error processing URL ${url}:`, error);
+          if (isDevelopment) console.error(`Error processing URL ${url}:`, error);
           return {
             id: `custom-${index}`,
             link: url,
@@ -331,7 +337,7 @@ export default async function handler(
       }
 
       // Add some logging to debug
-      console.log("Attempting to fetch URL:", url);
+      if (isDevelopment) console.log("Attempting to fetch URL:", url);
 
       // Fetch the Google News search results page with additional safeguards
       const response = await axios.get(url, {
@@ -347,7 +353,7 @@ export default async function handler(
 
       // Check if we got a valid response
       if (response.status !== 200) {
-        console.error("Non-200 status from Google:", response.status);
+        if (isDevelopment) console.error("Non-200 status from Google:", response.status);
         return res.status(response.status).json({
           error: "Failed to fetch from Google",
           details: `Status code: ${response.status}`,
@@ -357,7 +363,7 @@ export default async function handler(
       // Validate we actually got HTML content
       const contentType = response.headers["content-type"] || "";
       if (!contentType.includes("html")) {
-        console.error("Unexpected content type:", contentType);
+        if (isDevelopment) console.error("Unexpected content type:", contentType);
         return res.status(400).json({
           error: "Unexpected content type from Google",
           details: contentType,
@@ -423,7 +429,7 @@ export default async function handler(
       // Remove duplicates
       articles = articles.filter((article, index, self) => index === self.findIndex(a => a.link === article.link));
 
-      console.log(`Found ${articles.length} unique articles from Google`);
+      if (isDevelopment) console.log(`Found ${articles.length} unique articles from Google`);
 
       // Check if summaries should be processed
       const shouldProcessSummaries = processSummaries === "true";
@@ -438,16 +444,18 @@ export default async function handler(
         // Process articles in batches to control concurrency
         for (let i = 0; i < articlesToProcess.length; i += concurrencyLimit) {
           const batch = articlesToProcess.slice(i, i + concurrencyLimit);
-          console.log(
-            `Processing article batch ${Math.floor(i / concurrencyLimit) + 1}/${Math.ceil(
-              articlesToProcess.length / concurrencyLimit
-            )}`
-          );
+          if (isDevelopment)
+            console.log(
+              `Processing article batch ${Math.floor(i / concurrencyLimit) + 1}/${Math.ceil(
+                articlesToProcess.length / concurrencyLimit
+              )}`
+            );
 
           const batchResults = await Promise.allSettled(
             batch.map(async (article, batchIndex) => {
               const index = i + batchIndex;
-              console.log(`Processing article ${index + 1}/${articlesToProcess.length}: ${article.link}`);
+              if (isDevelopment)
+                console.log(`Processing article ${index + 1}/${articlesToProcess.length}: ${article.link}`);
 
               try {
                 const result = await extractAndSummarize(article.link);
@@ -463,7 +471,7 @@ export default async function handler(
 
                 return article;
               } catch (error: unknown) {
-                console.error(`Error processing article ${article.link}:`, error);
+                if (isDevelopment) console.error(`Error processing article ${article.link}:`, error);
                 return article;
               }
             })
@@ -489,7 +497,7 @@ export default async function handler(
           articles[index] = article;
         });
 
-        console.log(`Processed ${articlesToProcess.length} articles with summaries`);
+        if (isDevelopment) console.log(`Processed ${articlesToProcess.length} articles with summaries`);
       }
     }
 
@@ -501,7 +509,7 @@ export default async function handler(
       if (customUrls.length > 0) {
         // Process the URL list to get titles and summaries
         const customArticles = await processUrlList(customUrls);
-        console.log(`Processed ${customArticles.length} custom URLs`);
+        if (isDevelopment) console.log(`Processed ${customArticles.length} custom URLs`);
 
         // Add the custom articles to the articles array
         articles = [...articles, ...customArticles];
@@ -513,7 +521,7 @@ export default async function handler(
       articles: articles,
     });
   } catch (error: unknown) {
-    console.error("Error fetching or processing articles:", error);
+    if (isDevelopment) console.error("Error fetching or processing articles:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
     return res.status(500).json({
       error: "Failed to fetch or process articles",
