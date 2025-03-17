@@ -49,8 +49,6 @@ export const executeQuery = async (query: string, params: (string | number | boo
     }
   }
 
-  console.log("Executing query:", query);
-
   try {
     const request = pool.request();
     params.forEach((param, index) => {

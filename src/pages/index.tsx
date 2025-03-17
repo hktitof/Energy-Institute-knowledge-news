@@ -1028,6 +1028,8 @@ export default function NewsAggregator() {
                               )
                             );
 
+
+
                             // Also set this as the currently fetching category
                             setCategoriesFetching(category.id);
 
@@ -1035,8 +1037,8 @@ export default function NewsAggregator() {
                             const customLinks = category.links.map(link => link.url.trim());
 
                             console.log("Custom Links:", customLinks);
-
-                            await fetchNewsForCategory(category.id, customLinks);
+                            console.log("_------------------------_")
+                            await fetchNewsForCategory(category.id, customLinks, categories);
 
                             // Reset the categoriesFetching state when done
                             setCategoriesFetching(null);
