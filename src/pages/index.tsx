@@ -18,8 +18,9 @@ import { toast } from "react-toastify";
 
 import CategoryManager from "@/components/CategoryManager";
 import LinkList from "@/components/LinkList";
-import ArticlesTable from "@/components/ArticlesTable";
+
 import useCategoriesManager from "@/hooks/useCategoriesManager";
+import CategoryComponent from "../components/CategoryComponent";
 
 export default function NewsAggregator() {
   // Declare a state variable called categories and set it to an empty array of Category objects
@@ -55,7 +56,7 @@ export default function NewsAggregator() {
     setCategories,
     fetchCategoriesFunction: fetchCategories,
     sampleData: sampleCategory,
-    isTestMode: false, // Set to true for testing, false for production
+    isTestMode: true, // Set to true for testing, false for production
   });
 
   // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
@@ -523,24 +524,6 @@ export default function NewsAggregator() {
   }, [categoriesStatus]);
 
   // Function to summarize selected articles
-  interface SummarizeSelectedArticles {
-    (categoryId: number): void;
-  }
-
-  interface CategoryForSummary {
-    id: number;
-    name: string;
-    articles: Array<{ selected: boolean }>;
-  }
-
-  const summarizeSelectedArticles: SummarizeSelectedArticles = categoryId => {
-    const category = categories.find((c: CategoryForSummary) => c.id === categoryId);
-    if (!category) return;
-
-    const selectedArticleCount = category.articles.filter(a => a.selected).length;
-    alert(`Summarizing ${selectedArticleCount} articles from category "${category.name}"`);
-    // In a real app, this would call an API to summarize the articles
-  };
 
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
 
@@ -809,7 +792,6 @@ export default function NewsAggregator() {
   // print categories
   console.log("categories :", categories);
 
-
   // print is loading
   console.log("isLoading :", isLoading);
   return (
@@ -826,9 +808,7 @@ export default function NewsAggregator() {
           {isLoading && (
             // add a div that will be shown when the categories been fetching, use isLoading to check that and update UI perfectly
             <div className="flex justify-center items-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900">
-
-              </div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
             </div>
           )}
 
@@ -1151,60 +1131,68 @@ export default function NewsAggregator() {
         {categories.map(
           category =>
             category.showTable && (
-              <div key={`table-${category.id}`} className="p-6 bg-white shadow-sm mb-1">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800">{category.name} Articles</h2>
-                  <button
-                    onClick={() => summarizeSelectedArticles(category.id)}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition"
-                  >
-                    Summarize Selected
-                  </button>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                      <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Id
-                        </th>
-                        <th
-                          scope="col"
-                          className=" py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Select
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Title
-                        </th>
-
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Summary
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Link
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <ArticlesTable categories={categories} category={category} setCategories={setCategories} />
-                  </table>
-                </div>
-              </div>
+              <CategoryComponent
+                key={`table-${category.id}`}
+                category={category}
+                categories={categories}
+                setCategories={setCategories}
+              />
             )
+          // (
+          //     <div key={`table-${category.id}`} className="p-6 bg-white shadow-sm mb-1">
+          //       <div className="flex justify-between items-center mb-4">
+          //         <h2 className="text-xl font-semibold text-gray-800">{category.name} Articles</h2>
+          //         <button
+          //           onClick={() => summarizeSelectedArticles(category.id)}
+          //           className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition"
+          //         >
+          //           Summarize Selected
+          //         </button>
+          //       </div>
+
+          //       <div className="overflow-x-auto">
+          //         <table className="min-w-full divide-y divide-gray-200">
+          //           <thead className="bg-gray-50">
+          //             <tr>
+          //             <th
+          //                 scope="col"
+          //                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+          //               >
+          //                 Id
+          //               </th>
+          //               <th
+          //                 scope="col"
+          //                 className=" py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+          //               >
+          //                 Select
+          //               </th>
+          //               <th
+          //                 scope="col"
+          //                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+          //               >
+          //                 Title
+          //               </th>
+
+          //               <th
+          //                 scope="col"
+          //                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+          //               >
+          //                 Summary
+          //               </th>
+          //               <th
+          //                 scope="col"
+          //                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+          //               >
+          //                 Link
+          //               </th>
+          //             </tr>
+          //           </thead>
+
+          //           <ArticlesTable categories={categories} category={category} setCategories={setCategories} />
+          //         </table>
+          //       </div>
+          //     </div>
+          //   )
         )}
       </div>
     </div>

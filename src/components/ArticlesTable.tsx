@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ExternalLink, Edit, Save, Copy, Eye, Check } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { ExternalLink, Edit, Save, Copy, Eye, Check, X } from "lucide-react";
 import { Category, Article } from "@/utils/utils";
 import Image from "next/image";
 import { AlertCircle } from "lucide-react";
@@ -8,6 +8,7 @@ import { AlertCircle } from "lucide-react";
 interface ToggleArticleSelectionParams {
   categoryId: number;
   articleId: string;
+  isShiftKey?: boolean;
 }
 
 interface ArticlesTableProps {
@@ -31,6 +32,9 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   const [useScreenshot, setUseScreenshot] = useState(false);
 
   const [copiedArticleId, setCopiedArticleId] = useState<string | null>(null);
+  
+  // Add state for tracking last checked item (for shift+click functionality)
+  const [lastCheckedId, setLastCheckedId] = useState<string | null>(null);
 
   // Reset preview states when closing the modal
   const resetPreviewStates = () => {
@@ -45,30 +49,69 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     setEditingArticle(article.id);
     setEditTitle(article.title || "");
     setEditSummary(article.summary || "");
-    // categories articles title and summary based on article id
   };
 
   // Toggle article selection
-  const toggleArticleSelection = ({ categoryId, articleId }: ToggleArticleSelectionParams): void => {
-    setCategories(
-      categories.map((category: Category) => {
-        if (category.id === categoryId) {
-          return {
-            ...category,
-            articles: category.articles.map((article: Article) => {
-              if (article.id === articleId) {
-                return {
-                  ...article,
-                  selected: !article.selected,
-                };
-              }
-              return article;
-            }),
-          };
-        }
-        return category;
-      })
-    );
+  const toggleArticleSelection = ({ categoryId, articleId, isShiftKey = false }: ToggleArticleSelectionParams): void => {
+    // Handle shift+click for multiple selection
+    if (isShiftKey && lastCheckedId && lastCheckedId !== articleId) {
+      const currentArticles = [...category.articles];
+      const currentIndex = currentArticles.findIndex(article => article.id === articleId);
+      const lastCheckedIndex = currentArticles.findIndex(article => article.id === lastCheckedId);
+      
+      // Determine start and end index for the range
+      const startIndex = Math.min(currentIndex, lastCheckedIndex);
+      const endIndex = Math.max(currentIndex, lastCheckedIndex);
+      
+      // Get the target state from the current clicked item (to make all items in range match this state)
+      const targetState = !currentArticles[currentIndex].selected;
+      
+      // Update categories with the range selection
+      setCategories(
+        categories.map((cat: Category) => {
+          if (cat.id === categoryId) {
+            return {
+              ...cat,
+              articles: cat.articles.map((article: Article, index: number) => {
+                // If article is in the range, set it to the target state
+                if (index >= startIndex && index <= endIndex) {
+                  return {
+                    ...article,
+                    selected: targetState,
+                  };
+                }
+                return article;
+              }),
+            };
+          }
+          return cat;
+        })
+      );
+    } else {
+      // Regular single item toggle
+      setCategories(
+        categories.map((cat: Category) => {
+          if (cat.id === categoryId) {
+            return {
+              ...cat,
+              articles: cat.articles.map((article: Article) => {
+                if (article.id === articleId) {
+                  return {
+                    ...article,
+                    selected: !article.selected,
+                  };
+                }
+                return article;
+              }),
+            };
+          }
+          return cat;
+        })
+      );
+    }
+    
+    // Update last checked id for next shift+click operation
+    setLastCheckedId(articleId);
   };
 
   // Function to save edited content
@@ -97,7 +140,6 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   };
 
   // Function to copy article link to clipboard
-  // Replace your handleCopyLink function with this improved version
   const handleCopyLink = (articleId: string, link: string) => {
     navigator.clipboard.writeText(link);
     setCopiedArticleId(articleId);
@@ -161,9 +203,9 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   };
 
   // Function to close preview modal
-  const handleClosePreview = () => {
+  const handleClosePreview = useCallback(() => {
     resetPreviewStates();
-  };
+  }, []);
 
   // add on escape key listener to close modal when pressing escape and it will perform handleClosePreview function, make sure to remove the listener when the component unmounts only when preview is open
   useEffect(() => {
@@ -181,7 +223,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     return () => {
       document.removeEventListener("keydown", handleEscapeKey);
     };
-  }, [previewArticle, handleClosePreview]);
+  }, [handleClosePreview, previewArticle]);
 
   // Create the preview iframe once we have HTML content
   useEffect(() => {
@@ -199,6 +241,15 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     }
   }, [previewHtml, previewError]);
 
+  // Handle checkbox change with shift key detection
+  const handleCheckboxChange = (categoryId: number, articleId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    toggleArticleSelection({
+      categoryId,
+      articleId,
+      isShiftKey: event.nativeEvent instanceof MouseEvent && event.nativeEvent.shiftKey
+    });
+  };
+
   return (
     <>
       <tbody className="bg-white divide-y divide-gray-200">
@@ -210,12 +261,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                 <input
                   type="checkbox"
                   checked={article.selected || false}
-                  onChange={() =>
-                    toggleArticleSelection({
-                      categoryId: category.id,
-                      articleId: article.id,
-                    })
-                  }
+                  onChange={(e) => handleCheckboxChange(category.id, article.id, e)}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
               </td>
@@ -230,7 +276,6 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                       : "text-gray-900"
                   }`}
                 >
-                  {/* // print article id and add +1 to it make sure it's number then present it */}
                   {Number(article.id) + 1}
                 </div>
               </td>
@@ -282,17 +327,26 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex justify-end gap-2">
                   {editingArticle === article.id ? (
-                    <button
-                      onClick={() => handleSaveEdit(category.id, article.id)}
-                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                      <Save size={14} className="mr-1" />
-                      Save
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleSaveEdit(category.id, article.id)}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 hover:cursor-pointer"
+                      >
+                        <Save size={14} className="mr-1" />
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingArticle(null)}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 hover:cursor-pointer"
+                      >
+                        <X size={14} className="mr-1" />
+                        Cancel
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => handleEditClick(article)}
-                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer"
                     >
                       <Edit size={14} className="mr-1" />
                       Edit
@@ -447,7 +501,6 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                   </div>
                 </div>
               )}
-              {/* // Adfd this to your modal body */}
               {useScreenshot && previewScreenshot && (
                 <div className="w-full h-full flex flex-col items-center justify-start overflow-auto p-4">
                   <div className="bg-gray-100 p-2 mb-4 w-full rounded-md text-sm text-gray-700">
@@ -462,8 +515,8 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                     src={previewScreenshot}
                     alt={`Screenshot of ${previewArticle?.title || "article"}`}
                     className="max-w-full border border-gray-200 rounded shadow-sm"
-                    width={100} // Set the width of the image
-                    height={300} // Set the height of the image
+                    width={100}
+                    height={300}
                     loading="lazy"
                   />
                 </div>

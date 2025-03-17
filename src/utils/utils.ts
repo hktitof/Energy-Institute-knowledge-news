@@ -26,6 +26,9 @@ export interface Category {
   isFetchingNewArticles?: boolean;
   links: { id: number; url: string; title?: string }[];
   fetchedAllArticles?: boolean;
+  summary: string;
+  isSummaryFetching?: boolean;
+  summaryMaxWords?: number;
 }
 
 // Helper function to extract the summary from markdown JSON
@@ -59,6 +62,7 @@ export const fetchCategories = async (setCategories: React.Dispatch<React.SetSta
           showTable: false, // always false on the client side
           links: Array.from(uniqueLinks.values()), // Convert the map back to an array
           articles: cat.articles || [],
+          summary: "",
         };
       });
 
