@@ -200,4 +200,4 @@ export const sampleCategory = [
       ],
       "isFetchingNewArticles": false
   }
-]
+];

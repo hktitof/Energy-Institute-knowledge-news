@@ -55,7 +55,7 @@ export default function NewsAggregator() {
     setCategories,
     fetchCategoriesFunction: fetchCategories,
     sampleData: sampleCategory,
-    isTestMode: true, // Set to true for testing, false for production
+    isTestMode: false, // Set to true for testing, false for production
   });
 
   // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
@@ -809,8 +809,9 @@ export default function NewsAggregator() {
   // print categories
   console.log("categories :", categories);
 
-  // print categoriesStatus
-  console.log("categoriesStatus :", categoriesStatus);
+
+  // print is loading
+  console.log("isLoading :", isLoading);
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Left sidebar with categories */}
@@ -1173,7 +1174,7 @@ export default function NewsAggregator() {
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          className=" py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
                           Select
                         </th>

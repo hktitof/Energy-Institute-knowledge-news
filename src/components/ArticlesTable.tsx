@@ -165,6 +165,24 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     resetPreviewStates();
   };
 
+  // add on escape key listener to close modal when pressing escape and it will perform handleClosePreview function, make sure to remove the listener when the component unmounts only when preview is open
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        console.log("Escape key pressed, closed Preview Modal");
+        handleClosePreview();
+      }
+    };
+
+    if (previewArticle) {
+      document.addEventListener("keydown", handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [previewArticle, handleClosePreview]);
+
   // Create the preview iframe once we have HTML content
   useEffect(() => {
     if (previewHtml && !previewError) {
@@ -202,7 +220,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
                 />
               </td>
 
-              <td className=" py-4">
+              <td className="text-center py-4">
                 <div
                   className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
                     article.title?.includes("Access Denied") ||
