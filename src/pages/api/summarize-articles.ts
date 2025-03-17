@@ -7,7 +7,6 @@ interface SuccessResponse {
 }
 
 interface ErrorResponse {
-  success: false;
   error: string;
 }
 
@@ -16,6 +15,7 @@ interface RequestBody {
   articles: Article[];
   maxWords?: number;
   categoryName?: string;
+  customPrompt?: string;
 }
 
 interface Article {
@@ -28,13 +28,18 @@ export default async function handler(
   res: NextApiResponse<SuccessResponse | ErrorResponse>
 ): Promise<void> {
   if (req.method !== "POST") {
-    return res.status(405).json({ success: false, error: "Method not allowed" });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { categoryName = "", articles, maxWords = 50 }: RequestBody = req.body;
+  const { 
+    categoryName = "", 
+    articles, 
+    maxWords = 50,
+    customPrompt = "Create a single, concise summary of these {categoryName} articles in exactly {maxWords} words. Focus on the most important points. Return ONLY the summary text without any formatting or prefixes."
+  }: RequestBody = req.body;
 
   if (!articles || !Array.isArray(articles) || articles.length === 0) {
-    return res.status(400).json({ success: false, error: "Articles array is required and must not be empty" });
+    return res.status(400).json({ error: "Articles array is required and must not be empty" });
   }
 
   try {
@@ -48,7 +53,6 @@ export default async function handler(
 
     if (!endpoint || !apiKey || !deploymentName) {
       return res.status(500).json({
-        success: false,
         error: "Azure OpenAI API configuration is missing",
       });
     }
@@ -57,6 +61,16 @@ export default async function handler(
     const articlesText = uniqueArticles
       .map((article, index) => `Article ${index + 1}:\nTitle: ${article.title}\nSummary: ${article.summary}`)
       .join("\n\n");
+
+    // Check if we have article text before proceeding
+    if (!articlesText.trim()) {
+      return res.status(400).json({ error: "Missing text parameter" });
+    }
+
+    // Process the custom prompt template by replacing variables
+    const processedPrompt = customPrompt
+      .replace("{categoryName}", categoryName)
+      .replace("{maxWords}", maxWords.toString());
 
     // Call the Azure OpenAI API for summarization
     const aiResponse = await fetch(
@@ -71,7 +85,7 @@ export default async function handler(
           messages: [
             {
               role: "user",
-              content: `Create a single, concise summary of these ${categoryName} articles in exactly ${maxWords} words. Focus on the most important points. Return ONLY the summary text without any formatting or prefixes.
+              content: `${processedPrompt}
 
 Articles:
 ${articlesText}`,
@@ -86,7 +100,6 @@ ${articlesText}`,
     if (!aiResponse.ok) {
       const errorData = await aiResponse.json();
       return res.status(aiResponse.status).json({
-        success: false,
         error: `Azure OpenAI API error: ${errorData.error?.message || "Unknown error"}`,
       });
     }
@@ -102,7 +115,6 @@ ${articlesText}`,
   } catch (error) {
     console.error("Error processing request:", error);
     return res.status(500).json({
-      success: false,
       error: `Error processing request: ${(error as Error).message}`,
     });
   }

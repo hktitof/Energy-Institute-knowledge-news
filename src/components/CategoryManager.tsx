@@ -25,7 +25,6 @@ export default function CategoryManager({
   activeTab: string | null;
   setActiveTab: (tab: string | null) => void;
   selectedCategoryName: string;
-  
 }) {
   // this will be used to track if the user is adding a new category and show a loading spinner
   const [adding, setAdding] = useState(false);
@@ -179,6 +178,13 @@ export default function CategoryManager({
         <div className="p-5 bg-white animate-fadeIn">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-800">Add New Category</h3>
+            <button
+              onClick={() => setActiveTab(null)}
+              className="bg-gray-400 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hover:cursor-pointer"
+            >
+              <X size={16} className="mr-1" />
+              {/* Close */}
+            </button>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
             <CategoryAdder
@@ -197,6 +203,13 @@ export default function CategoryManager({
         <div className="p-5 bg-white animate-fadeIn">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-800">Add Search Terms</h3>
+            <button
+              onClick={() => setActiveTab(null)}
+              className="bg-gray-400 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hover:cursor-pointer"
+            >
+              <X size={16} className="mr-1" />
+              {/* Close */}
+            </button>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
             <SearchTermAdder categories={categories} fetchCategories={fetchCategories} setCategories={setCategories} />
@@ -340,7 +353,9 @@ export default function CategoryManager({
         </div>
       )}
 
-      {activeTab === "template" && <ArticleSummarizerTab  setActiveParentTab={setActiveTab} activeParentTab={activeTab}/>} 
+      {activeTab === "template" && (
+        <ArticleSummarizerTab setActiveParentTab={setActiveTab} activeParentTab={activeTab} />
+      )}
 
       <style jsx>{`
         @keyframes fadeIn {

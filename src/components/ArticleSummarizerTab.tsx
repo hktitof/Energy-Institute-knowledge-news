@@ -24,7 +24,6 @@ type ApiResponse = SummaryResult | ErrorResult;
 
 const ArticleSummarizerTab = ({
   setActiveParentTab,
-  activeParentTab,
 }: {
   setActiveParentTab: (tab: string | null) => void;
   activeParentTab: string | null;

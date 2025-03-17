@@ -56,7 +56,7 @@ export default function NewsAggregator() {
     setCategories,
     fetchCategoriesFunction: fetchCategories,
     sampleData: sampleCategory,
-    isTestMode: true, // Set to true for testing, false for production
+    isTestMode: false, // Set to true for testing, false for production
   });
 
   // create a useEffect that will be run one time when i get the list of categories, and it will set the categoriesStatus array with the categories that are being fetched
@@ -895,20 +895,6 @@ export default function NewsAggregator() {
                     {/* Search Terms Section */}
                     {category.searchTerms.length > 0 && (
                       <div className="mb-4">
-                        {/* <div className="flex justify-between items-center mb-2">
-                          <h3 className="text-sm font-medium text-gray-700">Search Terms</h3>
-                          <button
-                            className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1 hover:cursor-pointer"
-                            onClick={() => {
-                              setSelectedCategoryName(category.name);
-                              setActiveTab("search-terms");
-                              setSelectedCategoryId(category.id);
-                            }}
-                          >
-                            <Plus size={12} />
-                            <span>Add Search term</span>
-                          </button>
-                        </div> */}
                         <div className="flex flex-wrap gap-2">
                           {category.searchTerms.map((term, index) => (
                             <div
@@ -942,19 +928,6 @@ export default function NewsAggregator() {
                       <div className="mb-4">
                         <div className="flex justify-between items-center mb-2">
                           <h3 className="text-sm font-medium text-gray-700">Saved Links</h3>
-                          {/* <div className="flex items-center space-x-2">
-                            <button
-                              className="text-xs text-gray-500 hover:text-blue-600 flex items-center hover:cursor-pointer"
-                              onClick={() => {
-                                setSelectedCategoryName(category.name);
-                                setActiveTab("links");
-                                setSelectedCategoryId(category.id);
-                              }}
-                            >
-                              <Plus size={14} className="mr-1 " />
-                              Add link
-                            </button>
-                          </div> */}
                         </div>
 
                         {/* Links Grid/List with conditional rendering based on number of links */}
@@ -1138,61 +1111,6 @@ export default function NewsAggregator() {
                 setCategories={setCategories}
               />
             )
-          // (
-          //     <div key={`table-${category.id}`} className="p-6 bg-white shadow-sm mb-1">
-          //       <div className="flex justify-between items-center mb-4">
-          //         <h2 className="text-xl font-semibold text-gray-800">{category.name} Articles</h2>
-          //         <button
-          //           onClick={() => summarizeSelectedArticles(category.id)}
-          //           className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition"
-          //         >
-          //           Summarize Selected
-          //         </button>
-          //       </div>
-
-          //       <div className="overflow-x-auto">
-          //         <table className="min-w-full divide-y divide-gray-200">
-          //           <thead className="bg-gray-50">
-          //             <tr>
-          //             <th
-          //                 scope="col"
-          //                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          //               >
-          //                 Id
-          //               </th>
-          //               <th
-          //                 scope="col"
-          //                 className=" py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          //               >
-          //                 Select
-          //               </th>
-          //               <th
-          //                 scope="col"
-          //                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          //               >
-          //                 Title
-          //               </th>
-
-          //               <th
-          //                 scope="col"
-          //                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          //               >
-          //                 Summary
-          //               </th>
-          //               <th
-          //                 scope="col"
-          //                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          //               >
-          //                 Link
-          //               </th>
-          //             </tr>
-          //           </thead>
-
-          //           <ArticlesTable categories={categories} category={category} setCategories={setCategories} />
-          //         </table>
-          //       </div>
-          //     </div>
-          //   )
         )}
       </div>
     </div>
