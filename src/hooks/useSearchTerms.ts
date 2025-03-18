@@ -9,7 +9,7 @@ export const useSearchTerms = (
 ) => {
   const [loadingSearchTermId, setLoadingSearchTermId] = useState<number | null>(null);
 
-  const removeSearchTerm = async (categoryId: number, termIndex: number) => {
+  const removeSearchTerm = async (categoryId: string | number, termIndex: number) => {
     const category = categories.find(cat => cat.id === categoryId);
     if (!category) return;
 

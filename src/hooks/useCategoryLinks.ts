@@ -5,7 +5,7 @@ export const useCategoryLinks = (
   categories: Category[],
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>
 ) => {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number | null>(null);
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
 

@@ -36,7 +36,7 @@ export const useCategories = ({ isTestMode = false }: UseCategoriesProps) => {
   }, [isTestMode]);
 
   // Toggle category expansion
-  const toggleCategoryTable = (categoryId: number) => {
+  const toggleCategoryTable = (categoryId: number | string) => {
     setCategories(
       categories.map((category: Category) => ({
         ...category,

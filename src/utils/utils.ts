@@ -1,6 +1,15 @@
 import axios from "axios";
 
 // types
+export interface Link {
+  url: string;
+  title: string;
+}
+
+export interface NewsAggregatorProps {
+  isTestMode?: boolean;
+}
+
 export type ApiCategory = {
   CategoryID: number;
   CategoryName: string;
@@ -29,6 +38,12 @@ export interface Category {
   summary: string;
   isSummaryFetching?: boolean;
   summaryMaxWords?: number;
+}
+
+export interface CategoryStatus {
+  categoryId: string | number;
+  isFetchingArticles: boolean;
+  isFetchedAllArticles: boolean;
 }
 
 // Helper function to extract the summary from markdown JSON

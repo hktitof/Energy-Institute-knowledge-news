@@ -13,7 +13,7 @@ export const useArticleFetching = (
   categories: Category[],
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>
 ) => {
-  const [categoriesFetching, setCategoriesFetching] = useState<number | null>(null);
+  const [categoriesFetching, setCategoriesFetching] = useState<string | number | null>(null);
   const [isFetchingAllNewsByButton, setIsFetchingAllNewsByButton] = useState<boolean>(false);
   const [categoriesStatus, setCategoriesStatus] = useState<CategoryStatus[]>([]);
   const refFetchNews = useRef<HTMLSpanElement>(null);
@@ -66,7 +66,7 @@ export const useArticleFetching = (
 
   // Fetch news for a single category
   const fetchNewsForCategory = async (
-    categoryId: number,
+    categoryId: string | number,
     customLinks: string[] = [],
     currentCategories: Category[] = []
   ) => {
