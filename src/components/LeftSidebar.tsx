@@ -19,7 +19,11 @@ interface LeftSidebarProps {
   setCategoriesFetching: React.Dispatch<React.SetStateAction<string | number | null>>;
   categoriesStatus: CategoryStatus[];
   refFetchNews: React.RefObject<HTMLSpanElement | null>;
-  fetchNewsForCategory: (categoryId: string | number, customLinks: string[], categories: Category[]) => Promise<void>;
+  fetchNewsForCategory: (
+    categoryId: string | number,
+    customLinks: string[] | string[] | undefined,
+    categories: Category[],
+  ) => Promise<void>;
   fetchAllNews: () => void;
   isFetchingAllNewsByButton: boolean;
   setActiveTab: React.Dispatch<React.SetStateAction<string | null>>;

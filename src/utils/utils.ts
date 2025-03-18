@@ -26,6 +26,14 @@ export type Article = {
   selected: boolean;
 };
 
+export type ArticleFetchProgressProps = {
+  totalArticles: number;
+  fetchedCount: number;
+  errorCount: number;
+  currentArticle: string | null;
+  isActive: boolean;
+};
+
 export interface Category {
   id: number;
   name: string;
@@ -38,6 +46,7 @@ export interface Category {
   summary: string;
   isSummaryFetching?: boolean;
   summaryMaxWords?: number;
+  articleFetchProgressProps: ArticleFetchProgressProps;
 }
 
 export interface CategoryStatus {
@@ -78,6 +87,13 @@ export const fetchCategories = async (setCategories: React.Dispatch<React.SetSta
           links: Array.from(uniqueLinks.values()), // Convert the map back to an array
           articles: cat.articles || [],
           summary: "",
+          articleFetchProgressProps: {
+            totalArticles: 0,
+            fetchedCount: 0,
+            errorCount: 0,
+            currentArticle: null,
+            isActive: false,
+          },
         };
       });
 

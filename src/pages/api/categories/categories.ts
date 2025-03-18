@@ -41,6 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       searchTerms: SearchTerm[];
       links: Link[];
       articles: Article[];
+      articleFetchProgressProps: ArticleFetchProgressProps;
     }
 
     type Article = {
@@ -49,6 +50,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       summary: string;
       link: string;
       selected: boolean;
+    };
+
+    type ArticleFetchProgressProps = {
+      totalArticles: number;
+      fetchedCount: number;
+      errorCount: number;
+      currentArticle: string | null;
+      isActive: boolean;
     };
 
     // Group rows into categories with search terms and links
@@ -74,8 +83,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             CategoryName: row.CategoryName,
             searchTerms: [],
             links: [],
-
             articles: [],
+            articleFetchProgressProps: {
+              totalArticles: 0,
+              fetchedCount: 0,
+              errorCount: 0,
+              currentArticle: null,
+              isActive: false,
+            },
           };
         }
 

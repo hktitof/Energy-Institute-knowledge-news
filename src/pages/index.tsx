@@ -14,7 +14,7 @@ import LeftSidebar from "@/components/LeftSidebar";
 import CategoryComponent from "../components/CategoryComponent";
 import { NewsAggregatorProps } from "../utils/utils";
 
-export default function NewsAggregator({ isTestMode = true }: NewsAggregatorProps): ReactElement {
+export default function NewsAggregator({ isTestMode = false }: NewsAggregatorProps): ReactElement {
   // Use our custom hooks to handle different concerns
   const {
     categories,
@@ -68,7 +68,10 @@ export default function NewsAggregator({ isTestMode = true }: NewsAggregatorProp
         setCategoriesFetching={setCategoriesFetching}
         categoriesStatus={categoriesStatus}
         refFetchNews={refFetchNews}
-        fetchNewsForCategory={fetchNewsForCategory}
+        fetchNewsForCategory={(categoryId, customLinks, categories) => {
+          fetchNewsForCategory(categoryId, customLinks, categories, setCategories);
+          return Promise.resolve();
+        }}
         fetchAllNews={fetchAllNews}
         isFetchingAllNewsByButton={isFetchingAllNewsByButton}
         setActiveTab={setActiveTab}
