@@ -286,6 +286,13 @@ export const useArticleFetching = (
             processedArticles.push(processedArticle);
             fetchedCount++;
 
+            // check if processedArticle "Access Denied" as a title or "Error" word included in the title, if true increment errorCount and decrement 
+            if (processedArticle.title.includes("Access Denied") || processedArticle.title.includes("Error")) {
+              errorCount++;
+              // decrement fetchedCount as the are considered as successful articles
+              fetchedCount--;
+            }
+
             // Update category with the new article immediately
             setCategories(prevCategories => {
               return prevCategories.map(cat => {
@@ -293,6 +300,10 @@ export const useArticleFetching = (
                   return {
                     ...cat,
                     articles: [...cat.articles, processedArticle],
+                    articleFetchProgressProps: {
+                      ...cat.articleFetchProgressProps,
+                      errorCount,
+                    }
                   };
                 }
                 return cat;
@@ -306,6 +317,7 @@ export const useArticleFetching = (
           console.error(`Error processing article ${link}:`, error);
           errorCount++;
         }
+        
 
         // Update progress
         // Update progress for articleFetchProgressProps

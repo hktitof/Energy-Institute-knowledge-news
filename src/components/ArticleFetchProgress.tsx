@@ -39,7 +39,9 @@ const ArticleFetchProgress: React.FC<ArticleFetchProgressProps> = ({
           {currentArticle && (
             <>
               <Loader size={12} className="animate-spin mr-1" />
-              <span className="truncate max-w-xs">Fetching: {currentArticle}</span>
+              <a href={currentArticle} className="truncate max-w-xs" target="_blank" rel="noopener noreferrer">
+                Fetching: {currentArticle}
+              </a>
             </>
           )}
         </div>

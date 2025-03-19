@@ -218,9 +218,9 @@ export default function CategoryManager({
       )}
 
       {activeTab === "links" && (
-        <div className="p-6 bg-white rounded-lg shadow-sm">
-          <div className=" flex justify-between items-center">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">{selectedCategoryName} Links</h2>
+        <div className="px-6 pb-6 pt-3 bg-white rounded-lg shadow-sm ">
+          <div className=" flex justify-end items-center mb-2">
+            {/* <h2 className="text-2xl font-semibold text-gray-800 mb-6">{selectedCategoryName} Links</h2> */}
             {/* // add hide button which is not rectangle buse like a gray button, that has an 
             // arrow directed to the top */}
             <button
