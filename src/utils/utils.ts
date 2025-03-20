@@ -19,20 +19,19 @@ export type ApiCategory = {
   articles: Article[];
 };
 
-export type Article = {
-  id: string;
-  title: string;
-  summary: string;
-  link: string;
-  selected: boolean;
-};
-
 export type ArticleFetchProgressProps = {
   totalArticles: number;
   fetchedCount: number;
   errorCount: number;
   currentArticle: string | null;
   isActive: boolean;
+};
+export type Article = {
+  id: string;
+  title: string;
+  summary: string;
+  link: string;
+  selected: boolean;
 };
 
 export interface Category {

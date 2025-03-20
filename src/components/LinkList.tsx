@@ -1,7 +1,7 @@
 // components/LinkList.tsx
 
 import React from "react";
-import { Trash2, Globe } from "lucide-react";
+import { Globe } from "lucide-react";
 import { Category } from "../utils/utils";
 
 interface LinkListProps {
@@ -10,28 +10,8 @@ interface LinkListProps {
   fetchCategories: () => Promise<void>;
 }
 
-const LinkList: React.FC<LinkListProps> = ({ category, setCategories, fetchCategories }) => {
+const LinkList: React.FC<LinkListProps> = ({ category }) => {
   // Function to remove a link from a category
-  const removeLink = async (linkIndex: number) => {
-    // This is a placeholder for the actual implementation
-    // You would need to implement the actual API call to remove the link
-    console.log(`Removing link at index ${linkIndex} from category ${category.id}`);
-
-    // Optimistically update the UI
-    setCategories(prevCategories =>
-      prevCategories.map(cat => {
-        if (cat.id === category.id) {
-          const updatedLinks = [...cat.links];
-          updatedLinks.splice(linkIndex, 1);
-          return { ...cat, links: updatedLinks };
-        }
-        return cat;
-      })
-    );
-
-    // Refresh data from the server
-    await fetchCategories();
-  };
 
   return (
     <div className="space-y-2">
@@ -50,17 +30,6 @@ const LinkList: React.FC<LinkListProps> = ({ category, setCategories, fetchCateg
             </div>
             <p className="text-xs text-gray-500 truncate mt-1">{link.url}</p>
           </div>
-          {/* <button
-            className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={e => {
-              e.preventDefault();
-              // removeLink(index);
-              // print link index
-              console.log(`Removing link at index ${index} from category ${category.id}`);
-            }}
-          >
-            <Trash2 size={14} />
-          </button> */}
         </a>
       ))}
     </div>

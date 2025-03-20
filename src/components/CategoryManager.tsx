@@ -3,18 +3,11 @@ import CategoryAdder from "./CategoryAdder";
 import SearchTermAdder from "./SearchTermAdder";
 import { fetchCategories } from "@/utils/utils";
 import type { Category } from "@/utils/utils";
-import { Plus, Trash2, Settings, ExternalLink, Link as LinkIcon, Type, X } from "lucide-react";
-import { toast } from "react-toastify";
+import { Plus, Settings, Link as LinkIcon, Type, X } from "lucide-react";
 import CategoryLinksManager from "./CategoryLinksManager";
 
-// Link interfaces
-interface Link {
-  id: number;
-  url: string;
-  title: string | null;
-}
-
 import ArticleSummarizerTab from "./ArticleSummarizerTab";
+import KnowledgeNoteGenerator from "./NoteGenerator";
 export default function CategoryManager({
   newCategoryName,
   setNewCategoryName,
@@ -38,7 +31,7 @@ export default function CategoryManager({
   // this will be used to track if the user is adding a new category and show a loading spinner
   const [adding, setAdding] = useState(false);
 
-  const [links, setLinks] = useState<{ id: string; title: string; url: string }[]>([]);
+  const [, setLinks] = useState<{ id: string; title: string; url: string }[]>([]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
@@ -75,8 +68,8 @@ export default function CategoryManager({
     }
   };
 
-  const [deletingIds, setDeletingIds] = useState<string[]>([]);
-  const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
+  // const [deletingIds, setDeletingIds] = useState<string[]>([]);
+  // const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
 
   return (
     <div className="w-full bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-100">
@@ -133,8 +126,18 @@ export default function CategoryManager({
           <Settings size={16} className="mr-2" />
           Summarize Article
         </button>
+        <button
+          className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
+            activeTab === "template"
+              ? "border-blue-600 text-blue-600 bg-blue-50"
+              : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+          } hover:cursor-pointer`}
+          onClick={() => toggleTab("generator")}
+        >
+          <Settings size={16} className="mr-2" />
+          Note Generator
+        </button>
       </div>
-
       {/* Content Panels */}
       {activeTab === "category" && (
         <div className="p-5 bg-white animate-fadeIn">
@@ -161,6 +164,9 @@ export default function CategoryManager({
         </div>
       )}
 
+      {activeTab === "generator" && (
+        <KnowledgeNoteGenerator categories={categories} updateCategories={updateCategories} />
+      )}
       {activeTab === "search-terms" && (
         <div className="p-5 bg-white animate-fadeIn">
           <div className="flex justify-between items-center mb-4">
@@ -178,7 +184,6 @@ export default function CategoryManager({
           </div>
         </div>
       )}
-
       {activeTab === "links" && (
         <div className="px-6 pb-6 pt-3 bg-white rounded-lg shadow-sm ">
           <div className=" flex justify-end items-center mb-2">
@@ -207,11 +212,9 @@ export default function CategoryManager({
           />
         </div>
       )}
-
       {activeTab === "template" && (
         <ArticleSummarizerTab setActiveParentTab={setActiveTab} activeParentTab={activeTab} />
       )}
-
       <style jsx>{`
         @keyframes fadeIn {
           from {

@@ -14,7 +14,7 @@ import LeftSidebar from "@/components/LeftSidebar";
 import CategoryComponent from "../components/CategoryComponent";
 import { NewsAggregatorProps } from "../utils/utils";
 
-export default function NewsAggregator({ isTestMode = false }: NewsAggregatorProps): ReactElement {
+export default function NewsAggregator({ isTestMode = true }: NewsAggregatorProps): ReactElement {
   // Use our custom hooks to handle different concerns
   const {
     categories,

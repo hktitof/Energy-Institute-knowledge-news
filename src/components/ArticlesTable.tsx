@@ -32,7 +32,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   const [useScreenshot, setUseScreenshot] = useState(false);
 
   const [copiedArticleId, setCopiedArticleId] = useState<string | null>(null);
-  
+
   // Add state for tracking last checked item (for shift+click functionality)
   const [lastCheckedId, setLastCheckedId] = useState<string | null>(null);
 
@@ -52,20 +52,24 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   };
 
   // Toggle article selection
-  const toggleArticleSelection = ({ categoryId, articleId, isShiftKey = false }: ToggleArticleSelectionParams): void => {
+  const toggleArticleSelection = ({
+    categoryId,
+    articleId,
+    isShiftKey = false,
+  }: ToggleArticleSelectionParams): void => {
     // Handle shift+click for multiple selection
     if (isShiftKey && lastCheckedId && lastCheckedId !== articleId) {
       const currentArticles = [...category.articles];
       const currentIndex = currentArticles.findIndex(article => article.id === articleId);
       const lastCheckedIndex = currentArticles.findIndex(article => article.id === lastCheckedId);
-      
+
       // Determine start and end index for the range
       const startIndex = Math.min(currentIndex, lastCheckedIndex);
       const endIndex = Math.max(currentIndex, lastCheckedIndex);
-      
+
       // Get the target state from the current clicked item (to make all items in range match this state)
       const targetState = !currentArticles[currentIndex].selected;
-      
+
       // Update categories with the range selection
       setCategories(
         categories.map((cat: Category) => {
@@ -109,7 +113,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
         })
       );
     }
-    
+
     // Update last checked id for next shift+click operation
     setLastCheckedId(articleId);
   };
@@ -246,7 +250,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     toggleArticleSelection({
       categoryId,
       articleId,
-      isShiftKey: event.nativeEvent instanceof MouseEvent && event.nativeEvent.shiftKey
+      isShiftKey: event.nativeEvent instanceof MouseEvent && event.nativeEvent.shiftKey,
     });
   };
 
@@ -255,29 +259,31 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
       <tbody className="bg-white divide-y divide-gray-200">
         {category.articles && category.articles.length > 0 ? (
           // Existing articles rendering
-          category.articles.map(article => (
+          category.articles.map((article, index) => (
             <tr key={article.id}>
               <td className="px-6 py-4 whitespace-nowrap">
                 <input
                   type="checkbox"
                   checked={article.selected || false}
-                  onChange={(e) => handleCheckboxChange(category.id, article.id, e)}
+                  onChange={e => handleCheckboxChange(category.id, article.id, e)}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
               </td>
 
               <td className="text-center py-4">
-                <div
-                  className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
-                    article.title?.includes("Access Denied") ||
-                    article.title?.includes("Fetch Error") ||
-                    article.title?.includes("Error")
-                      ? "text-red-600 font-bold"
-                      : "text-gray-900"
-                  }`}
-                >
-                  {Number(article.id) + 1}
-                </div>
+                <td className="text-center py-4">
+                  <div
+                    className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
+                      article.title?.includes("Access Denied") ||
+                      article.title?.includes("Fetch Error") ||
+                      article.title?.includes("Error")
+                        ? "text-red-600 font-bold"
+                        : "text-gray-900"
+                    }`}
+                  >
+                    {index + 1}
+                  </div>
+                </td>
               </td>
 
               <td className="px-6 py-4">
