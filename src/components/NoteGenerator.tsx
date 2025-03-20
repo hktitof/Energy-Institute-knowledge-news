@@ -88,6 +88,32 @@ const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ categor
     return paragraphs;
   });
 
+  // get today date like this "Tuesday, 4th March 2025"
+  function getFormattedDate(): string {
+    const date = new Date();
+    const options: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long", year: "numeric" };
+    const formattedDate = new Intl.DateTimeFormat("en-GB", options).format(date);
+
+    return formattedDate.replace(/\b(\d{1,2})(?=(st|nd|rd|th))?\b/g, day => {
+      const suffix = getDaySuffix(parseInt(day));
+      return `${day}${suffix}`;
+    });
+  }
+
+  function getDaySuffix(day: number): string {
+    if (day >= 11 && day <= 13) return "th";
+    switch (day % 10) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
+    }
+  }
+
   const generateDocxPreview = async () => {
     setIsGenerating(true);
 
@@ -98,7 +124,28 @@ const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ categor
           {
             properties: {},
             children: [
-              // Title text black with font "Calibri", and the size 12 and bold
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "Knowledge Note for " + getFormattedDate(),
+                    bold: true,
+                    size: 24,
+                    color: "000000",
+                    font: "Aptos",
+                  }),
+                ],
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "",
+                    // bold: true,
+                    size: 20,
+                    color: "000000",
+                    font: "Aptos",
+                  }),
+                ],
+              }),
               new Paragraph({
                 children: [
                   new TextRun({
