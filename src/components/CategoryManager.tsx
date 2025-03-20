@@ -165,7 +165,12 @@ export default function CategoryManager({
       )}
 
       {activeTab === "generator" && (
-        <KnowledgeNoteGenerator categories={categories} updateCategories={updateCategories} />
+        <KnowledgeNoteGenerator
+          categories={categories}
+          updateCategories={updateCategories}
+          setActiveTab={setActiveTab}
+          activeTab={activeTab}
+        />
       )}
       {activeTab === "search-terms" && (
         <div className="p-5 bg-white animate-fadeIn">
