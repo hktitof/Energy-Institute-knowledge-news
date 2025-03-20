@@ -5,7 +5,14 @@ import { fetchCategories } from "@/utils/utils";
 import type { Category } from "@/utils/utils";
 import { Plus, Trash2, Settings, ExternalLink, Link as LinkIcon, Type, X } from "lucide-react";
 import { toast } from "react-toastify";
-import LinkForm from "./LinkForm";
+import CategoryLinksManager from "./CategoryLinksManager";
+
+// Link interfaces
+interface Link {
+  id: number;
+  url: string;
+  title: string | null;
+}
 
 import ArticleSummarizerTab from "./ArticleSummarizerTab";
 export default function CategoryManager({
@@ -16,6 +23,7 @@ export default function CategoryManager({
   activeTab,
   setActiveTab,
   selectedCategoryName,
+  updateCategories,
 }: {
   newCategoryName: string;
   setNewCategoryName: (name: string) => void;
@@ -25,6 +33,7 @@ export default function CategoryManager({
   activeTab: string | null;
   setActiveTab: (tab: string | null) => void;
   selectedCategoryName: string;
+  updateCategories: () => Promise<void>;
 }) {
   // this will be used to track if the user is adding a new category and show a loading spinner
   const [adding, setAdding] = useState(false);
@@ -68,53 +77,6 @@ export default function CategoryManager({
 
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
-
-  const handleDeleteLink = async (linkId: string) => {
-    // If confirmation dialog is not shown yet, show it first
-    if (showConfirmation !== linkId) {
-      setShowConfirmation(linkId);
-      return;
-    }
-
-    // If confirmed, proceed with deletion
-    try {
-      setDeletingIds(prev => [...prev, linkId]);
-
-      const response = await fetch(`/api/links/delete?linkId=${linkId}`, {
-        method: "DELETE",
-      });
-
-      // print response and mention that from the component name
-      console.log("Response from handleDeleteLink: ", response);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete link");
-      }
-
-      // Success - clear confirmation state and refresh links
-      setShowConfirmation(null);
-      toast.success("Link deleted successfully");
-      fetchCategories(setCategories);
-    } catch (error: unknown) {
-      console.error("Error deleting link:", error);
-      if (error instanceof Error) {
-        toast.error(error.message || "Error deleting link");
-      } else {
-        toast.error("Error deleting link");
-      }
-    } finally {
-      setDeletingIds(prev => prev.filter(id => id !== linkId));
-    }
-  };
-
-  const cancelDelete = () => {
-    setShowConfirmation(null);
-  };
-
-  // Debug logs
-  console.log("Selected Category Name: ", selectedCategoryName);
-  console.log("Selected Category ID: ", selectedCategoryId);
 
   return (
     <div className="w-full bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-100">
@@ -233,122 +195,15 @@ export default function CategoryManager({
             </button>
           </div>
 
-          {/* Links Table */}
-          <div className="mb-8">
-            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Title
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      URL
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {links && links.length > 0 ? (
-                    links.map((link, index) => (
-                      <tr
-                        key={index}
-                        className={`${
-                          showConfirmation === link.id ? "bg-red-50" : "hover:bg-gray-50"
-                        } transition-colors duration-200`}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {link.title || "Untitled Link"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">
-                          {link.url}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {showConfirmation !== link.id ? (
-                            <div className="flex space-x-3">
-                              <a
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:text-blue-900 transition-colors duration-150"
-                                aria-label="Visit link"
-                              >
-                                <ExternalLink size={18} />
-                              </a>
-                              <button
-                                className="text-gray-400 hover:text-red-600 transition-colors duration-150 hover:cursor-pointer"
-                                onClick={() => handleDeleteLink(link.id)}
-                                aria-label="Delete link"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-3 animate-fade-in">
-                              <span className="text-red-600 text-xs font-medium">Confirm delete?</span>
-                              <button
-                                className="px-2 py-1 text-xs bg-white text-gray-600 hover:text-gray-800 border border-gray-300 rounded shadow-sm transition-colors duration-150"
-                                onClick={cancelDelete}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                className="px-2 py-1 text-xs bg-red-500 text-white hover:bg-red-600 rounded shadow-sm transition-colors duration-150 flex items-center"
-                                onClick={() => handleDeleteLink(link.id)}
-                                disabled={deletingIds.includes(link.id)}
-                              >
-                                {deletingIds.includes(link.id) ? (
-                                  <span className="flex items-center">
-                                    <svg
-                                      className="animate-spin -ml-1 mr-1 h-3 w-3 text-white"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                      ></circle>
-                                      <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                      ></path>
-                                    </svg>
-                                    Deleting
-                                  </span>
-                                ) : (
-                                  <span>Confirm</span>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={3} className="px-6 py-4 text-center text-sm text-gray-500">
-                        No links added yet. Use the form below to add your first link.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
           {/* Horizontal Add Link Form */}
-          <LinkForm
-            categoryId={String(selectedCategoryId)}
-            categoryName={selectedCategoryName}
-            onLinkAdded={() => fetchCategories(setCategories)}
+          <CategoryLinksManager
+            categoryId={categories.find(category => category.id === selectedCategoryId)?.id.toString() || ""}
+            categoryName={categories.find(category => category.id === selectedCategoryId)?.name || ""}
+            links={(categories.find(category => category.id === selectedCategoryId)?.links || []).map(link => ({
+              ...link,
+              title: link.title || null,
+            }))}
+            updateCategories={updateCategories}
           />
         </div>
       )}

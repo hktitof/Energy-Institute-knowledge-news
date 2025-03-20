@@ -19,12 +19,16 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
   const {
     categories,
     setCategories,
-    isLoading,
+    isLoading: isLoadingCategories,
     deletingCategoryId,
     toggleCategoryTable,
     deleteCategory,
     newCategoryName,
     setNewCategoryName,
+    isRetrying: isRetryingCategories,
+    retryCount: retryCountCategories,
+    error: hasErrorCategories,
+    updateCategories,
   } = useCategories({ isTestMode });
 
   const { loadingSearchTermId, removeSearchTerm } = useSearchTerms(categories, setCategories);
@@ -50,7 +54,7 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
 
   // Log categories for debugging
   console.log("categories:", categories);
-  console.log("isLoading:", isLoading);
+
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -58,7 +62,10 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
       <LeftSidebar
         categories={categories}
         setCategories={setCategories}
-        isLoading={isLoading}
+        isLoadingCategories={isLoadingCategories}
+        isRetryingCategories={isRetryingCategories}
+        retryCountCategories={retryCountCategories}
+        hasErrorCategories={hasErrorCategories}
         deletingCategoryId={deletingCategoryId}
         toggleCategoryTable={toggleCategoryTable}
         deleteCategory={deleteCategory}
@@ -92,6 +99,7 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
           activeTab={activeTab}
           selectedCategoryName={selectedCategoryName || ""}
           categories={categories}
+          updateCategories={updateCategories}
         />
 
         {/* Articles Tables */}

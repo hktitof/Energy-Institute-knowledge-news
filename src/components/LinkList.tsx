@@ -46,19 +46,21 @@ const LinkList: React.FC<LinkListProps> = ({ category, setCategories, fetchCateg
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2">
               <Globe size={14} className="text-gray-400 flex-shrink-0" />
-              <span className="text-sm text-gray-700 font-medium truncate">{link.title || "Untitled"}</span>
+              <span className="text-xs text-gray-700 font-medium truncate">{link.title || "Untitled"}</span>
             </div>
             <p className="text-xs text-gray-500 truncate mt-1">{link.url}</p>
           </div>
-          <button
+          {/* <button
             className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={e => {
               e.preventDefault();
-              removeLink(index);
+              // removeLink(index);
+              // print link index
+              console.log(`Removing link at index ${index} from category ${category.id}`);
             }}
           >
             <Trash2 size={14} />
-          </button>
+          </button> */}
         </a>
       ))}
     </div>

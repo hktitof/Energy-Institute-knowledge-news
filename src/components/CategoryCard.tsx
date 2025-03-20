@@ -57,7 +57,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
         }}
       >
         <div className="flex items-center space-x-3">
-          <h2 className="text-lg font-semibold text-gray-800">{category.name}</h2>
+          <h2 className="text-xs font-semibold text-gray-800">{category.name}</h2>
           <div className="flex space-x-2">
             <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
               {category.searchTerms.length} terms
@@ -76,32 +76,32 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
             )}&tbm=nws&tbs=qdr:w`}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-gray-500 hover:bg-blue-50 hover:text-blue-500 transition-colors duration-200"
+            className="p-1 rounded-full text-gray-500 hover:bg-blue-50 hover:text-blue-500 transition-colors duration-200"
             onClick={e => e.stopPropagation()}
             title="Open in Google News"
           >
-            <ExternalLink size={18} />
+            <ExternalLink size={16} />
           </a>
           {/* add a checked icon if isFetchedAllArticles of categoriesStatus for this category is true */}
           {categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles && (
             <span className="p-2 rounded-full text-green-500 bg-green-50">
-              <RefreshCw size={18} />
+              <RefreshCw size={16} />
             </span>
           )}
           <button
-            className="p-2 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors duration-200 hover:cursor-pointer"
+            className="p-1 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors duration-200 hover:cursor-pointer"
             onClick={e => deleteCategory(category.id.toString(), e)}
             disabled={deletingCategoryId === category.id.toString()}
             title="Remove category"
           >
             {deletingCategoryId === category.id.toString() ? (
-              <Loader size={18} className="animate-spin text-red-500" />
+              <Loader size={16} className="animate-spin text-red-500" />
             ) : (
-              <Trash2 size={18} />
+              <Trash2 size={16} />
             )}
           </button>
           <button
-            className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors duration-200"
+            className="p-1 rounded-full text-gray-500 hover:bg-gray-100 transition-colors duration-200"
             onClick={e => {
               e.stopPropagation();
               if (category.showTable) {
@@ -109,7 +109,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
               }
             }}
           >
-            {category.showTable ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {category.showTable ? <ChevronUp size={16} /> : <ChevronDown size={18} />}
           </button>
         </div>
       </motion.div>
@@ -176,9 +176,9 @@ const SearchTermsSection: React.FC<SearchTermsSectionProps> = ({ category, loadi
       <div className="flex flex-wrap gap-2">
         {category.searchTerms.map((term, index) => (
           <div key={index} className="flex items-center bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full shadow-sm">
-            <span className="text-sm font-medium">{term}</span>
+            <span className="text-xs font-medium">{term}</span>
             <button
-              className={`ml-1.5 rounded-full p-0.5 ${
+              className={`ml-1.5 rounded-full  ${
                 loadingSearchTermId === index
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-blue-500 hover:text-red-500 hover:bg-blue-100 transition-colors duration-200 hover:cursor-pointer"
@@ -220,7 +220,7 @@ const CategoryLinksSection: React.FC<CategoryLinksSectionProps> = ({
   return (
     <div className="mb-4">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-medium text-gray-700">Saved Links</h3>
+        <h3 className="text-xs font-medium text-gray-700">Saved Links</h3>
       </div>
 
       {category.links.length <= 5 ? (
@@ -240,19 +240,10 @@ const CategoryLinksSection: React.FC<CategoryLinksSectionProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
                     <Globe size={14} className="text-gray-400 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 font-medium truncate">{link.title || "Untitled"}</span>
+                    <span className="text-xs text-gray-700 font-medium truncate">{link.title || "Untitled"}</span>
                   </div>
                   <p className="text-xs text-gray-500 truncate mt-1">{link.url}</p>
                 </div>
-                <button
-                  className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={e => {
-                    e.preventDefault();
-                    // Remove link function - would need to be implemented
-                  }}
-                >
-                  <Trash2 size={14} />
-                </button>
               </a>
             ))}
           </div>

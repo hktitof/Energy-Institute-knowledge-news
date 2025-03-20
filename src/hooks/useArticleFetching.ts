@@ -99,7 +99,7 @@ export const useArticleFetching = (
     categoryId: string | number,
     customLinks: string[] = [],
     categories: Category[] = [],
-    setCategories: React.Dispatch<React.SetStateAction<Category[]>>,
+    setCategories: React.Dispatch<React.SetStateAction<Category[]>>
   ) => {
     const categoryData = categories.length ? categories : categories;
     const category = categoryData.find(cat => cat.id === categoryId);
@@ -286,7 +286,7 @@ export const useArticleFetching = (
             processedArticles.push(processedArticle);
             fetchedCount++;
 
-            // check if processedArticle "Access Denied" as a title or "Error" word included in the title, if true increment errorCount and decrement 
+            // check if processedArticle "Access Denied" as a title or "Error" word included in the title, if true increment errorCount and decrement
             if (processedArticle.title.includes("Access Denied") || processedArticle.title.includes("Error")) {
               errorCount++;
               // decrement fetchedCount as the are considered as successful articles
@@ -303,7 +303,7 @@ export const useArticleFetching = (
                     articleFetchProgressProps: {
                       ...cat.articleFetchProgressProps,
                       errorCount,
-                    }
+                    },
                   };
                 }
                 return cat;
@@ -317,7 +317,6 @@ export const useArticleFetching = (
           console.error(`Error processing article ${link}:`, error);
           errorCount++;
         }
-        
 
         // Update progress
         // Update progress for articleFetchProgressProps

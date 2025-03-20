@@ -30,7 +30,14 @@ const ArticleFetchProgress: React.FC<ArticleFetchProgressProps> = ({
       <div className="w-full bg-gray-200 rounded-full h-2.5 mb-3">
         <div
           className="bg-blue-600 h-2.5 rounded-full"
-          style={{ width: `${totalArticles > 0 ? ((fetchedCount + errorCount) / totalArticles) * 100 : 0}%` }}
+          style={{
+            width:
+              totalArticles > 0
+                ? (fetchedCount + errorCount < totalArticles
+                    ? ((fetchedCount + errorCount) / totalArticles) * 100
+                    : 100) + "%"
+                : "0%",
+          }}
         ></div>
       </div>
 

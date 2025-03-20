@@ -39,7 +39,7 @@ const CategoryActionButtons: React.FC<CategoryActionButtonsProps> = ({
             }}
           >
             <Link size={14} />
-            <span>Manage Links</span>
+            <span className="text-xs">Manage Links</span>
           </button>
         </div>
         {categoriesStatus.find(status => status.categoryId === category.id)?.isFetchingArticles ? (
@@ -84,7 +84,7 @@ const CategoryActionButtons: React.FC<CategoryActionButtonsProps> = ({
             ) : (
               <RefreshCw size={14} />
             )}
-            <span key={category.id} ref={refFetchNews}>
+            <span key={category.id} ref={refFetchNews} className="text-xs">
               {category.articleFetchProgressProps.isActive ? "Fetching" : "Fetch News"}
             </span>
           </button>
