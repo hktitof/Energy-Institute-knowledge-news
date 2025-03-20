@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { saveAs } from "file-saver";
-import { Document, Packer, Paragraph, TextRun } from "docx";
+import { Document, ExternalHyperlink, Packer, Paragraph, TextRun } from "docx";
 import { X } from "lucide-react";
 import { Category } from "@/hooks/useArticleFetching";
 // Import the docx-preview library
@@ -15,10 +15,78 @@ interface KnowledgeNoteGeneratorProps {
   activeTab: string | null;
 }
 
-const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ setActiveTab, activeTab }) => {
+const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ categories, setActiveTab, activeTab }) => {
   const [docBlob, setDocBlob] = useState<Blob | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  const dynamicParagraphs = categories.map(
+    item =>
+      new Paragraph({
+        bullet: { level: 0 },
+        children: [
+          new TextRun({
+            text: `${item.name}: `,
+            bold: true,
+            size: 20,
+            color: "000000",
+            font: "Calibri",
+          }),
+          new TextRun({
+            text: item.summary,
+            size: 20,
+            color: "000000",
+            font: "Calibri",
+          }),
+        ],
+      })
+  );
+
+  const categoryParagraphs = categories.flatMap((cat, idx) => {
+    // Create the category title
+    const categoryTitle = new Paragraph({
+      children: [
+        new TextRun({
+          text: cat.name,
+          bold: true,
+          font: "Calibri",
+          size: 20,
+          color: "000000",
+        }),
+      ],
+    });
+
+    // Create paragraphs for each article
+    const articles = cat.articles.map(
+      article =>
+        new Paragraph({
+          children: [
+            new ExternalHyperlink({
+              link: article.link,
+              children: [
+                new TextRun({
+                  text: article.title,
+                  underline: {},
+                  color: "#547e8c",
+                  font: "Calibri",
+                  size: 20,
+                }),
+              ],
+            }),
+          ],
+        })
+    );
+
+    // Combine them
+    const paragraphs = [categoryTitle, ...articles];
+
+    // If this isn't the last category, add an empty paragraph after the articles
+    if (idx < categories.length - 1) {
+      paragraphs.push(new Paragraph({}));
+    }
+
+    return paragraphs;
+  });
 
   const generateDocxPreview = async () => {
     setIsGenerating(true);
@@ -34,11 +102,11 @@ const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ setActi
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: "Knowledge Note for Tuesday, 4th March 2025 ",
-                    bold: true,
-                    size: 24,
+                    text: "Hi all - below are news updates that the Knowledge team have put together over the past week. Events are highlighted in red.",
+                    // bold: true,
+                    size: 20,
                     color: "000000",
-                    font: "Calibri",
+                    font: "Aptos",
                   }),
                 ],
               }),
@@ -46,46 +114,97 @@ const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ setActi
                 children: [
                   new TextRun({
                     text: "",
-                    bold: false,
-                    size: 24,
+                    // bold: true,
+                    size: 20,
                     color: "000000",
-                    font: "Calibri",
+                    font: "Aptos",
                   }),
                 ],
               }),
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: "Hi everyone - below are news updates that the Knowledge team have put together over the past week. Events are highlighted in ",
-                    bold: false,
-                    size: 24,
+                    text: "Please let us know if you would like the note to cover any further topics. If you're unable to access",
+                    // bold: true,
+                    size: 20,
                     color: "000000",
-                    font: "Calibri",
+                    font: "Aptos",
                   }),
                   new TextRun({
-                    text: "red",
-                    bold: false,
-                    size: 24,
-                    color: "FF0000",
-                    font: "Calibri",
+                    text: " FT ",
+                    bold: true,
+                    size: 20,
+                    color: "000000",
+                    font: "Aptos",
                   }),
                   new TextRun({
-                    text: ".",
-                    bold: false,
-                    size: 24,
+                    text: "articles, please contact the Knowledge team.",
+                    // bold: true,
+                    size: 20,
                     color: "000000",
-                    font: "Calibri",
+                    font: "Aptos",
                   }),
                 ],
               }),
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: "We have used Copilot to produce a summary of the news (links to the news items can still be found below). Any feedback would be welcomed!",
-                    color: "FF0000",
+                    text: "",
+                    // bold: true,
+                    size: 20,
+                    color: "000000",
+                    font: "Aptos",
                   }),
                 ],
               }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "We have used our new tool powered by Gpt-4o to produce a summary of the news (links to the news items can still be found below). Any feedback would be welcomed! ",
+                    // bold: true,
+                    size: 20,
+                    color: "000000",
+                    font: "Aptos",
+                  }),
+                ],
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "",
+                    // bold: true,
+                    size: 20,
+                    color: "000000",
+                    font: "Aptos",
+                  }),
+                ],
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "News Summary (produced using our new tool powered by Gpt-4o) ",
+                    bold: true,
+                    size: 20,
+                    color: "000000",
+                    font: "Aptos",
+                  }),
+                ],
+              }),
+              // ... other paragraphs ...
+              // Insert bullet list items
+              ...dynamicParagraphs,
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "",
+                    // bold: true,
+                    size: 20,
+                    color: "000000",
+                    font: "Aptos",
+                  }),
+                ],
+              }),
+              ...categoryParagraphs,
             ],
           },
         ],
@@ -133,7 +252,7 @@ const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ setActi
 
   return (
     <div className="my-4">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 px-6">
         <h2 className="text-xl font-semibold text-gray-800">Knowledge Note Generator</h2>
         <div className="flex space-x-2">
           <button
@@ -143,27 +262,18 @@ const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ setActi
             Generate
           </button>
           <button
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-            onClick={() => setActiveTab("links")}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 hover:cursor-pointer"
+            onClick={() => {
+              setActiveTab(null);
+            }}
           >
-            Links
+            <X size={16} />
           </button>
         </div>
       </div>
 
       {activeTab === "generator" && (
         <div className="px-6 pb-6 pt-3 bg-white rounded-lg shadow-sm">
-          <div className="flex justify-end items-center mb-2">
-            <button
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 hover:cursor-pointer"
-              onClick={() => {
-                setActiveTab(null);
-              }}
-            >
-              <X size={16} />
-            </button>
-          </div>
-
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-800">Knowledge Note Preview</h3>

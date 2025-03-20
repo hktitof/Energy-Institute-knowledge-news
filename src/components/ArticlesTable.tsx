@@ -271,19 +271,17 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
               </td>
 
               <td className="text-center py-4">
-                <td className="text-center py-4">
-                  <div
-                    className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
-                      article.title?.includes("Access Denied") ||
-                      article.title?.includes("Fetch Error") ||
-                      article.title?.includes("Error")
-                        ? "text-red-600 font-bold"
-                        : "text-gray-900"
-                    }`}
-                  >
-                    {index + 1}
-                  </div>
-                </td>
+                <div
+                  className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
+                    article.title?.includes("Access Denied") ||
+                    article.title?.includes("Fetch Error") ||
+                    article.title?.includes("Error")
+                      ? "text-red-600 font-bold"
+                      : "text-gray-900"
+                  }`}
+                >
+                  {index + 1}
+                </div>
               </td>
 
               <td className="px-6 py-4">

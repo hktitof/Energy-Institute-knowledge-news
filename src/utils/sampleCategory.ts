@@ -19,7 +19,7 @@ export const sampleCategory = [
         title: "Northern Lights: the First Major Carbon Capture and Storage Project in Norway",
         summary:
           "Northern Lights is a pioneering carbon capture and storage (CCS) project in Norway, jointly owned by TotalEnergies, Equinor, and Shell. Operational since September 2024, Phase 1 stores 1.5 million tons of CO2 annually, with plans to expand capacity to 5 million tons as demand grows. Approved by Norway in 2020 and designated as a Project of Common Interest by the EU, it aims to decarbonize European heavy industry by sequestering CO2 in geological layers beneath the North Sea. The first commercial agreement was signed with Yara in 2022 to store CO2 from its Netherlands-based ammonia and fertilizer plant.",
-        selected: true,
+        selected: false,
       },
       {
         id: "1",
@@ -27,7 +27,7 @@ export const sampleCategory = [
         title: "gigaCCS research centre opens in Norway to drive gigatonne",
         summary:
           "The gigaCCS research centre in Trondheim, Norway, has been launched to advance gigatonne-scale carbon capture and storage (CCS) technology, crucial for meeting global emission targets by 2050. Operated by SINTEF and funded by the Research Council of Norway, the eight-year initiative focuses on new capture technologies, large-scale CO2 storage, infrastructure, and governance. It involves 39 industrial and academic partners, including bp and Equinor. Research will explore innovations like direct air capture, AI-driven material design, and CO2 storage optimization. SINTEF emphasizes CCS as vital for climate goals, despite ongoing debates about its reliance in global strategies.",
-        selected: true,
+        selected: false,
       },
       {
         id: "2",
@@ -35,7 +35,7 @@ export const sampleCategory = [
         title: "World’s First Carbon Removal Plant Powered Directly by Wind Planned",
         summary:
           "A Texas project led by Return Carbon, Skytree, and EDF aims to build the world’s first direct air capture (DAC) facility powered primarily by on-site wind energy. Slated for 2028, the plant will remove up to 500,000 metric tons of CO2 annually, storing it underground. The innovative agreement ensures low-cost clean energy access while allowing EDF to redirect power during peak pricing. DAC technology, though expensive at $500 per ton, is critical for combating climate change. European firms are targeting Texas for its abundant wind resources and favorable geology. Specific project costs and location details remain undisclosed.",
-        selected: true,
+        selected: false,
       },
       {
         id: "3",
@@ -43,7 +43,7 @@ export const sampleCategory = [
         title: "How is Liverpool Football Club using DAC & Carbon Credits?",
         summary:
           "Liverpool FC is collaborating with 1PointFive, a subsidiary of Occidental, to integrate Direct Air Capture (DAC) technology and carbon credits into its sustainability strategy, The Red Way. DAC removes CO₂ from the atmosphere for storage or reuse, aiding LFC's goals to halve operational emissions by 2030 and achieve net zero by 2040. The partnership includes calculating product emissions and offsetting them with DAC-based carbon credits. This initiative aligns with broader efforts in the football industry and global frameworks like the UN Sustainable Development Goals to combat climate change and promote sustainability in sports and beyond.",
-        selected: true,
+        selected: false,
       },
       {
         id: "4",
@@ -58,7 +58,7 @@ export const sampleCategory = [
         title: "Carbon Dioxide Removal (CDR) 2025",
         summary:
           "The report analyzes carbon dioxide removal (CDR) technologies, including DACCS, BECCS, biochar, mineralization, and ocean-based methods, highlighting their scalability, economic potential, and role in carbon credit markets. Corporate demand for durable CDR credits is driving technological advancements and market growth, with revenue projected to exceed $14 billion by 2035. Key developments include the scaling of DACCS to megatonne levels and the rise of electrochemical methods for energy-efficient CO₂ capture. The report provides forecasts, regulatory insights, and profiles of leading players, emphasizing the importance of infrastructure, energy, and policy support for widespread adoption of CDR solutions.",
-        selected: true,
+        selected: false,
       },
       {
         id: "6",
@@ -66,7 +66,7 @@ export const sampleCategory = [
         title: "Dipeptides for carbon dioxide capture: Research reveals promising CO₂ sequestration mechanisms",
         summary:
           "Researchers at the University of Tennessee have identified dipeptides as a sustainable alternative for carbon dioxide (CO₂) sequestration, addressing limitations of traditional amine-based methods. Using computational chemistry, they analyzed 960 dipeptides and found cooperative interactions that enhance CO₂ binding, with asparagine subunits strengthening and glycine subunits weakening the binding. This study provides design principles for optimizing CO₂ capture efficiency and supports the development of bioengineered materials for direct air capture technologies, offering a promising solution to combat climate change through bioinspired mechanisms.",
-        selected: true,
+        selected: false,
       },
       {
         id: "7",
@@ -74,7 +74,7 @@ export const sampleCategory = [
         title: "Video: Developing direct air capture, and is it a viable source of CO2?",
         summary:
           "Bjorn Utgard, VP of Strategy at Skytree, explores the potential of direct air capture (DAC) technology and its viability as a CO2 source during gasworld’s CCUS: Turning Carbon into Opportunity webinar. The discussion highlights DAC's role in carbon capture and utilization, addressing industry trends and challenges. Gasworld.TV's 2025 webinar program offers insights into industrial gas sector developments, inviting global participation. For details or speaking opportunities, visit gasworld.tv or contact the organizers directly.",
-        selected: true,
+        selected: false,
       },
       {
         id: "8",
@@ -82,7 +82,7 @@ export const sampleCategory = [
         title: "Saudi Aramco launches first direct air capture test unit",
         summary:
           "Saudi Aramco has launched Saudi Arabia's first direct air capture (DAC) test unit, capable of removing 12 tons of CO2 annually, in collaboration with Siemens Energy. The facility aims to test CO2 capture materials and support scaling DAC systems for broader deployment. Aramco plans to achieve net-zero Scope 1 and 2 emissions by 2050 and is developing a larger DAC plant with a capacity of 1,250 tons per year. Additionally, Aramco is working on a carbon capture and storage project in Jubail, targeting 9 million tons of CO2 annually by 2027, alongside other carbon capture initiatives and investments.",
-        selected: true,
+        selected: false,
       },
       {
         id: "9",
@@ -90,7 +90,7 @@ export const sampleCategory = [
         title: "Carbon Capture and Storage Technologies",
         summary:
           "Carbon Capture and Storage (CCS) is a critical technology to combat climate change by capturing up to 90% of CO₂ emissions from industrial facilities and power plants. It involves three methods: filtering exhaust gases, separating carbon during fuel processing, and oxyfuel combustion. Captured CO₂ is stored underground in rock formations, saltwater layers, or mineralized into stone, and can also be repurposed for industrial use. Despite its potential, CCS faces high costs, technological challenges, and limited adoption. Government incentives and global policies are essential for wider implementation. Future advancements aim to make CCS more efficient and economically viable for reversing climate change.",
-        selected: true,
+        selected: false,
       },
     ],
     summary:
