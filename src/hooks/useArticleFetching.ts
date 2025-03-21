@@ -411,18 +411,22 @@ export const useArticleFetching = (
     }
   };
 
-  // Fetch news for all categories
+  // Optimized fetch news for all categories
+  // Optimized fetch news for all categories
   const fetchAllNews = async () => {
     toast.info("Starting to fetch news for all categories...");
     setIsFetchingAllNewsByButton(true);
 
+    // Save which categories were originally open
     const openCategoryIds = new Set(categories.filter(cat => cat.showTable).map(cat => cat.id));
     let updatedCategories = [...categories];
 
     try {
+      // Process categories one by one
       for (let i = 0; i < updatedCategories.length; i++) {
         const category = updatedCategories[i];
 
+        // Skip categories that are already fetching
         if (category.isFetchingNewArticles) {
           continue;
         }
@@ -430,6 +434,7 @@ export const useArticleFetching = (
         try {
           setCategoriesFetching(category.id);
 
+          // Show the current category being processed
           updatedCategories = updatedCategories.map(cat => ({
             ...cat,
             showTable: cat.id === category.id,
@@ -442,120 +447,43 @@ export const useArticleFetching = (
             autoClose: 2000,
           });
 
-          await new Promise(resolve => setTimeout(resolve, 500));
-
+          // Get custom links for this category
           const customLinks = category.links.map(link => link.url.trim());
-          const searchTerms = category.searchTerms;
 
-          try {
-            let apiUrl = "/api/category-article-links-scrapper";
-            let fetchOptions = {};
-
-            if (searchTerms.length > 0) {
-              const searchUrl = `https://www.google.co.uk/search?q=${encodeURIComponent(
-                searchTerms.join(" OR ")
-              )}&tbm=nws&tbs=qdr:w`;
-
-              console.log("Generated search URL:", searchUrl);
-
-              if (customLinks.length > 0) {
-                fetchOptions = {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    searchUrl: searchUrl,
-                    processSummaries: "true",
-                    urls: customLinks,
-                  }),
-                };
-              } else {
-                const encodedUrl = encodeURIComponent(searchUrl);
-                apiUrl = `${apiUrl}?url=${encodedUrl}&processSummaries=true`;
-              }
-            } else if (customLinks.length > 0) {
-              fetchOptions = {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ urls: customLinks }),
-              };
-            }
-
-            const response = await fetch(apiUrl, fetchOptions);
-
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-              console.error("Received non-JSON response:", await response.text());
-              throw new Error("API returned non-JSON response");
-            }
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || "Failed to fetch news");
-            }
-
-            const data = await response.json();
-            console.log(`Articles found for category ${category.name}:`, data.articles);
-
-            if (data.articles && data.articles.length > 0 && data.articles[0].title !== "") {
-              const categoryIndex: number = updatedCategories.findIndex(cat => cat.id === category.id);
-
-              if (categoryIndex !== -1) {
-                interface ArticleFromApi {
-                  id: number;
-                  title: string;
-                  summary: string;
-                  link: string;
-                }
-
-                const processedArticles = data.articles.map((article: ArticleFromApi, index: number) => ({
-                  ...article,
-                  id: index.toString(),
-                  summary: extractSummary(article.summary),
-                  selected: false,
-                }));
-
-                updatedCategories[categoryIndex] = {
-                  ...updatedCategories[categoryIndex],
-                  articles: processedArticles,
-                  isFetchingNewArticles: false,
-                };
-
-                setCategories([...updatedCategories]);
-              }
+          // Use the single category fetcher for each category
+          await fetchNewsForCategory(category.id, customLinks, updatedCategories, newCategoriesOrUpdater => {
+            // Handle both direct arrays and updater functions
+            if (typeof newCategoriesOrUpdater === "function") {
+              // If it's an updater function, apply it to our current categories
+              const updaterFn = newCategoriesOrUpdater as (prev: Category[]) => Category[];
+              updatedCategories = updaterFn(updatedCategories);
             } else {
-              updatedCategories = updatedCategories.map(cat =>
-                cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
-              );
-              setCategories([...updatedCategories]);
+              // If it's a direct array, use it directly
+              updatedCategories = newCategoriesOrUpdater as Category[];
             }
-          } catch (error) {
-            console.error(`Error fetching news data for category "${category.name}":`, error);
-
-            updatedCategories = updatedCategories.map(cat =>
-              cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
-            );
+            // Update the state
             setCategories([...updatedCategories]);
-          }
+          });
 
+          // Wait briefly before moving to next category
           await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
           console.error(`Error processing category "${category.name}":`, error);
           toast.error(`Failed to fetch news for "${category.name}"`);
 
+          // Reset the fetching state for this category
           updatedCategories = updatedCategories.map(cat =>
             cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
           );
 
           setCategories([...updatedCategories]);
 
+          // Wait a bit longer after an error
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 
+      // Restore original category open/closed states
       const finalCategories = updatedCategories.map(cat => {
         return {
           ...cat,
@@ -573,8 +501,174 @@ export const useArticleFetching = (
       console.error("Error in fetchAllNews:", error);
       toast.error("An error occurred while fetching news");
       setCategoriesFetching(null);
+      setIsFetchingAllNewsByButton(false);
     }
   };
+
+  // Fetch news for all categories
+  // const fetchAllNews = async () => {
+  //   toast.info("Starting to fetch news for all categories...");
+  //   setIsFetchingAllNewsByButton(true);
+
+  //   const openCategoryIds = new Set(categories.filter(cat => cat.showTable).map(cat => cat.id));
+  //   let updatedCategories = [...categories];
+
+  //   try {
+  //     for (let i = 0; i < updatedCategories.length; i++) {
+  //       const category = updatedCategories[i];
+
+  //       if (category.isFetchingNewArticles) {
+  //         continue;
+  //       }
+
+  //       try {
+  //         setCategoriesFetching(category.id);
+
+  //         updatedCategories = updatedCategories.map(cat => ({
+  //           ...cat,
+  //           showTable: cat.id === category.id,
+  //           isFetchingNewArticles: cat.id === category.id ? true : cat.isFetchingNewArticles,
+  //         }));
+
+  //         setCategories(updatedCategories);
+
+  //         toast.info(`Fetching news for "${category.name}" (${i + 1}/${updatedCategories.length})`, {
+  //           autoClose: 2000,
+  //         });
+
+  //         await new Promise(resolve => setTimeout(resolve, 500));
+
+  //         const customLinks = category.links.map(link => link.url.trim());
+  //         const searchTerms = category.searchTerms;
+
+  //         try {
+  //           let apiUrl = "/api/category-article-links-scrapper";
+  //           let fetchOptions = {};
+
+  //           if (searchTerms.length > 0) {
+  //             const searchUrl = `https://www.google.co.uk/search?q=${encodeURIComponent(
+  //               searchTerms.join(" OR ")
+  //             )}&tbm=nws&tbs=qdr:w`;
+
+  //             console.log("Generated search URL:", searchUrl);
+
+  //             if (customLinks.length > 0) {
+  //               fetchOptions = {
+  //                 method: "POST",
+  //                 headers: {
+  //                   "Content-Type": "application/json",
+  //                 },
+  //                 body: JSON.stringify({
+  //                   searchUrl: searchUrl,
+  //                   processSummaries: "true",
+  //                   urls: customLinks,
+  //                 }),
+  //               };
+  //             } else {
+  //               const encodedUrl = encodeURIComponent(searchUrl);
+  //               apiUrl = `${apiUrl}?url=${encodedUrl}&processSummaries=true`;
+  //             }
+  //           } else if (customLinks.length > 0) {
+  //             fetchOptions = {
+  //               method: "POST",
+  //               headers: {
+  //                 "Content-Type": "application/json",
+  //               },
+  //               body: JSON.stringify({ urls: customLinks }),
+  //             };
+  //           }
+
+  //           const response = await fetch(apiUrl, fetchOptions);
+
+  //           const contentType = response.headers.get("content-type");
+  //           if (!contentType || !contentType.includes("application/json")) {
+  //             console.error("Received non-JSON response:", await response.text());
+  //             throw new Error("API returned non-JSON response");
+  //           }
+
+  //           if (!response.ok) {
+  //             const errorData = await response.json();
+  //             throw new Error(errorData.error || "Failed to fetch news");
+  //           }
+
+  //           const data = await response.json();
+  //           console.log(`Articles found for category ${category.name}:`, data.articles);
+
+  //           if (data.articles && data.articles.length > 0 && data.articles[0].title !== "") {
+  //             const categoryIndex: number = updatedCategories.findIndex(cat => cat.id === category.id);
+
+  //             if (categoryIndex !== -1) {
+  //               interface ArticleFromApi {
+  //                 id: number;
+  //                 title: string;
+  //                 summary: string;
+  //                 link: string;
+  //               }
+
+  //               const processedArticles = data.articles.map((article: ArticleFromApi, index: number) => ({
+  //                 ...article,
+  //                 id: index.toString(),
+  //                 summary: extractSummary(article.summary),
+  //                 selected: false,
+  //               }));
+
+  //               updatedCategories[categoryIndex] = {
+  //                 ...updatedCategories[categoryIndex],
+  //                 articles: processedArticles,
+  //                 isFetchingNewArticles: false,
+  //               };
+
+  //               setCategories([...updatedCategories]);
+  //             }
+  //           } else {
+  //             updatedCategories = updatedCategories.map(cat =>
+  //               cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
+  //             );
+  //             setCategories([...updatedCategories]);
+  //           }
+  //         } catch (error) {
+  //           console.error(`Error fetching news data for category "${category.name}":`, error);
+
+  //           updatedCategories = updatedCategories.map(cat =>
+  //             cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
+  //           );
+  //           setCategories([...updatedCategories]);
+  //         }
+
+  //         await new Promise(resolve => setTimeout(resolve, 1000));
+  //       } catch (error) {
+  //         console.error(`Error processing category "${category.name}":`, error);
+  //         toast.error(`Failed to fetch news for "${category.name}"`);
+
+  //         updatedCategories = updatedCategories.map(cat =>
+  //           cat.id === category.id ? { ...cat, isFetchingNewArticles: false } : cat
+  //         );
+
+  //         setCategories([...updatedCategories]);
+
+  //         await new Promise(resolve => setTimeout(resolve, 2000));
+  //       }
+  //     }
+
+  //     const finalCategories = updatedCategories.map(cat => {
+  //       return {
+  //         ...cat,
+  //         showTable: openCategoryIds.has(cat.id),
+  //         isFetchingNewArticles: false,
+  //       };
+  //     });
+
+  //     setCategories(finalCategories);
+  //     setCategoriesFetching(null);
+  //     setIsFetchingAllNewsByButton(false);
+
+  //     toast.success("Completed fetching news for all categories");
+  //   } catch (error) {
+  //     console.error("Error in fetchAllNews:", error);
+  //     toast.error("An error occurred while fetching news");
+  //     setCategoriesFetching(null);
+  //   }
+  // };
 
   // Refetch articles (populate empty titles/summaries)
   const refetchArticles = useCallback(
