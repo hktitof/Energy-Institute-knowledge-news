@@ -97,10 +97,13 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </div>
           <p className="text-gray-600 mb-4">The database might be unavailable or still resuming.</p>
           <button
-            onClick={fetchCategories}
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+            onClick ={
+              // refrech the page
+              () => window.location.reload()
+            }
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition hover:cursor-pointer"
           >
-            Retry loading categories
+            Refresh the page
           </button>
         </div>
       );

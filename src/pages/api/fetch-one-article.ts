@@ -113,7 +113,23 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
     const h1Elements = document.querySelectorAll("h1");
     const mainHeading = h1Elements.length > 0 ? h1Elements[0].textContent?.trim() || "" : "";
     let title = mainHeading || rawTitle;
-    title = title.replace(/\s*[|\-–—]\s*[^|\-–—]+$/, "").trim();
+
+    // Instead of removing everything after a dash/pipe, only remove common website suffixes
+    const commonSuffixes = [
+      /\s*-\s*[A-Z][a-z]+(\.[a-z]+)+$/, // - Website.com
+      /\s*\|\s*[A-Z][a-z]+(\.[a-z]+)+$/, // | Website.com
+      /\s*-\s*(CNN|BBC|NBC|CBS|Fox News|MSNBC|The New York Times|Washington Post|Reuters|AP)$/i,
+      /\s*\|\s*(CNN|BBC|NBC|CBS|Fox News|MSNBC|The New York Times|Washington Post|Reuters|AP)$/i,
+    ];
+
+    // Apply each suffix pattern
+    for (const pattern of commonSuffixes) {
+      if (pattern.test(title)) {
+        title = title.replace(pattern, "").trim();
+        break; // Only apply one replacement
+      }
+    }
+
     if (!title || title.length < 5) {
       title = rawTitle.split(/[|\-–—]/)[0].trim();
     }
@@ -151,17 +167,19 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
                 {
                   role: "user",
                   content: `Create a concise summary (maximum ${maxWords} words) of the following article. Focus only on the key information, main arguments, and essential details. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
-        
-        Article title: ${title}
-        Article content: ${textContent}
-        
-        Return your response as a JSON object with this exact format, without any markdown formatting or code blocks:
-        {
-          "title": "The exact article title",
-          "summary": "The concise summary of the article"
-        }
-        
-        IMPORTANT: Return only the raw JSON object, no markdown formatting, no code blocks, no backticks.`,
+              
+              Article title: ${title}
+              Article content: ${textContent}
+              
+              IMPORTANT: For the title, use the COMPLETE original article title WITHOUT truncating or modifying it, even if it contains characters like hyphens, pipes, or dashes. Keep the title exactly as it appears in the article.
+              
+              Return your response as a JSON object with this exact format, without any markdown formatting or code blocks:
+              {
+                "title": "The complete, unmodified article title",
+                "summary": "The concise summary of the article"
+              }
+              
+              IMPORTANT: Return only the raw JSON object, no markdown formatting, no code blocks, no backticks.`,
                 },
               ],
               max_tokens: 800,
@@ -271,7 +289,7 @@ export default async function handler(
     // Process the article
     try {
       const result = await extractAndSummarize(url);
-      
+
       // Create the article object
       const article: Article = {
         id: articleId.toString(),
@@ -288,7 +306,7 @@ export default async function handler(
       });
     } catch (error: unknown) {
       if (isDevelopment) console.error(`Error processing article ${url}:`, error);
-      
+
       // Return an error article
       const errorArticle: Article = {
         id: articleId.toString(),
@@ -297,7 +315,7 @@ export default async function handler(
         summary: "An error occurred while processing this article.",
         selected: false,
       };
-      
+
       return res.status(200).json({
         article: errorArticle,
         success: false,
