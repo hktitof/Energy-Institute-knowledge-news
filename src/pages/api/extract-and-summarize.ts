@@ -82,6 +82,8 @@ export default async function handler(
       maxRedirects: 5,
     });
 
+    
+
     // Parse the HTML using JSDOM
     const dom = new JSDOM(response.data, { url });
     const document = dom.window.document;
