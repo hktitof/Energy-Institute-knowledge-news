@@ -56,8 +56,16 @@ const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ categor
       ],
     });
 
-    // Create paragraphs for each article
-    const articles = cat.articles.map(
+    // Filter to only include selected articles
+    const selectedArticles = cat.articles.filter(article => article.selected);
+
+    // Skip categories with no selected articles
+    if (selectedArticles.length === 0) {
+      return [];
+    }
+
+    // Create paragraphs for each selected article
+    const articles = selectedArticles.map(
       article =>
         new Paragraph({
           children: [
