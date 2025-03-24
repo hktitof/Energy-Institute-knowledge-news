@@ -10,6 +10,7 @@
     "analyze": "ANALYZE=true yarn build"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
     "@next/bundle-analyzer": "^15.2.3",
     "@types/async-retry": "^1.4.9",
     "@types/cheerio": "^0.22.35",
