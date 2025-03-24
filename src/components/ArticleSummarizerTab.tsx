@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Edit, ExternalLink, AlertCircle, Link, FileText, X } from "lucide-react";
+import { Copy, Check, Edit, ExternalLink, AlertCircle, Link, FileText } from "lucide-react";
 
 // Define proper types for the API response
 interface SummaryResult {
@@ -22,9 +22,7 @@ interface ErrorResult {
 
 type ApiResponse = SummaryResult | ErrorResult;
 
-const ArticleSummarizerTab = ({
-  setActiveParentTab,
-}: {
+const ArticleSummarizerTab = ({}: {
   setActiveParentTab: (tab: string | null) => void;
   activeParentTab: string | null;
 }) => {
@@ -180,7 +178,6 @@ Return your response as a JSON object with this exact format:
       <div className="mb-6">
         <div className="flex justify-between">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Article Summarizer</h1>
-         
         </div>
         <p className="text-gray-600">Extract and summarize content from any article URL or pasted text</p>
       </div>

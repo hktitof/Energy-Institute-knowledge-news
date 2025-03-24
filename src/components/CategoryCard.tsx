@@ -2,10 +2,22 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, X, ExternalLink, Loader, Trash2, RefreshCw, Globe } from "lucide-react";
+import { ChevronUp, X, ExternalLink, Loader, Trash2, Globe } from "lucide-react";
 import { Category, CategoryStatus } from "../utils/utils";
+
 import CategoryActionButtons from "./CategoryActionButtons";
 import LinkList from "./LinkList";
+
+// Tooltip component
+const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => (
+  <div className="relative inline-block">
+    <div className="peer">{children}</div>
+    <div className="opacity-0 peer-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded-md shadow-lg whitespace-nowrap">
+      {text}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+    </div>
+  </div>
+);
 
 interface CategoryCardProps {
   category: Category;
@@ -27,6 +39,10 @@ interface CategoryCardProps {
   setSelectedCategoryId: React.Dispatch<React.SetStateAction<string | number | null>>;
 }
 
+const ExternalLinkIcon = ExternalLink;
+const TrashIcon = Trash2;
+const SpinnerIcon = Loader;
+const ChevronUpIcon = ChevronUp;
 const CategoryCard: React.FC<CategoryCardProps> = ({
   category,
   categories,
@@ -47,69 +63,130 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
   setSelectedCategoryId,
 }) => {
   return (
-    <div className="border rounded-md border-gray-300 mb-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
+    <div className="border rounded-md border-gray-300 mb-3 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
       <motion.div
-        className="p-5 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+        className="group p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50/80 transition-colors border-b border-gray-100"
         onClick={() => {
           toggleCategoryTable(category.id);
           setActiveTab(null);
           setSelectedCategoryName(category.name);
         }}
       >
-        <div className="flex items-center space-x-3">
-          <h2 className="text-xs font-semibold text-gray-800">{category.name}</h2>
-          <div className="flex space-x-2">
-            <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
-              {category.searchTerms.length} terms
-            </span>
+        <div className="flex items-center space-x-4">
+          {/* Category title with status indicator */}
+          <div className="relative">
+            <h2 className="text-sm font-semibold text-gray-900 tracking-tight">{category.name}</h2>
+            <div className="absolute -right-3 -top-2">
+              {categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles && (
+                <div className="relative" title="Data updated">
+                  <div className="absolute animate-ping h-2 w-2 bg-green-400 rounded-full opacity-75"></div>
+                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Compact metrics */}
+          <div className="flex items-center space-x-3 text-gray-500">
+            <div className="flex items-center space-x-1">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-file-text h-4 w-4 text-blue-500"
+              >
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                <polyline points="14 2 14 8 20 8" />
+                <path d="M16 13h-6" />
+                <path d="M16 17H8" />
+                <path d="M10 9h-2" />
+              </svg>
+              <span className="text-xs font-medium">{category.searchTerms.length}</span>
+            </div>
+
             {category.links && (
-              <span className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full">
-                {category.links.length} links
-              </span>
+              <div className="flex items-center space-x-1">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-link h-4 w-4 text-purple-500"
+                >
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+                <span className="text-xs font-medium">{category.links.length}</span>
+              </div>
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <a
-            href={`https://www.google.co.uk/search?q=${encodeURIComponent(
-              category.searchTerms.join(" OR ")
-            )}&tbm=nws&tbs=qdr:w`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 rounded-full text-gray-500 hover:bg-blue-50 hover:text-blue-500 transition-colors duration-200"
-            onClick={e => e.stopPropagation()}
-            title="Open in Google News"
-          >
-            <ExternalLink size={16} />
-          </a>
-          {/* add a checked icon if isFetchedAllArticles of categoriesStatus for this category is true */}
-          {categoriesStatus.find(status => status.categoryId === category.id)?.isFetchedAllArticles && (
-            <span className="p-2 rounded-full text-green-500 bg-green-50">
-              <RefreshCw size={16} />
-            </span>
-          )}
-          <button
-            className="p-1 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors duration-200 hover:cursor-pointer"
-            onClick={e => deleteCategory(category.id.toString(), e)}
-            disabled={deletingCategoryId === category.id.toString()}
-            title="Remove category"
-          >
-            {deletingCategoryId === category.id.toString() ? (
-              <Loader size={16} className="animate-spin text-red-500" />
-            ) : (
-              <Trash2 size={16} />
-            )}
+
+        {/* Action buttons with better spacing */}
+        <div className="flex items-center  space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button>
+            <a
+              href={`https://www.google.co.uk/search?q=${encodeURIComponent(
+                category.searchTerms.join(" OR ")
+              )}&tbm=nws&tbs=qdr:w`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-4 h-4 p-1.5 rounded-lg text-gray-400  hover:text-blue-600 transition-colors"
+              onClick={e => e.stopPropagation()}
+            >
+              <ExternalLinkIcon className="h-4 w-4" />
+            </a>
           </button>
+
+          <Tooltip text="Delete Category">
+            <button
+              className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+              onClick={e => deleteCategory(category.id.toString(), e)}
+              disabled={deletingCategoryId === category.id.toString()}
+            >
+              {deletingCategoryId === category.id.toString() ? (
+                <SpinnerIcon className="h-4 w-4 animate-spin" />
+              ) : (
+                <TrashIcon className="h-4 w-4" />
+              )}
+            </button>
+          </Tooltip>
+
+          <div className="w-px h-6 bg-gray-200 mx-1"></div>
+
           <button
-            className="p-1 rounded-full text-gray-500 hover:bg-gray-100 transition-colors duration-200"
-            onClick={e => {
-              e.stopPropagation();
-              if (category.showTable) {
-                toggleCategoryTable(category.id);
-              }
-            }}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+            onClick={e => e.stopPropagation()}
           >
-            {category.showTable ? <ChevronUp size={16} /> : <ChevronDown size={18} />}
+            {category.showTable ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-chevron-down h-5 w-5"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            )}
           </button>
         </div>
       </motion.div>

@@ -3,7 +3,7 @@ import CategoryAdder from "./CategoryAdder";
 import SearchTermAdder from "./SearchTermAdder";
 import { fetchCategories } from "@/utils/utils";
 import type { Category } from "@/utils/utils";
-import { Plus, Settings, Link as LinkIcon, Type, X } from "lucide-react";
+
 import CategoryLinksManager from "./CategoryLinksManager";
 
 import ArticleSummarizerTab from "./ArticleSummarizerTab";
@@ -130,32 +130,34 @@ export default function CategoryManager({
             Search Terms
           </a>
 
-          <a
-            onClick={() => toggleTab("links")}
-            className={`group flex items-center whitespace-nowrap py-3 px-5 border-b-2 ${
-              activeTab === "links"
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent hover:border-indigo-400 text-gray-600 hover:text-indigo-600"
-            } font-medium transition-colors cursor-pointer`}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`h-4 w-4 mr-2 ${
-                activeTab === "links" ? "text-indigo-500" : "text-gray-400 group-hover:text-indigo-500"
-              }`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {activeTab === "links" && (
+            <a
+              onClick={() => toggleTab("links")}
+              className={`group flex items-center whitespace-nowrap py-3 px-5 border-b-2 ${
+                activeTab === "links"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent hover:border-indigo-400 text-gray-600 hover:text-indigo-600"
+              } font-medium transition-colors cursor-pointer`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-              />
-            </svg>
-            Manage Links
-          </a>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`h-4 w-4 mr-2 ${
+                  activeTab === "links" ? "text-indigo-500" : "text-gray-400 group-hover:text-indigo-500"
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                />
+              </svg>
+              Manage Links
+            </a>
+          )}
 
           <a
             onClick={() => toggleTab("template")}

@@ -4,6 +4,7 @@ import React from "react";
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import CategoryCard from "./CategoryCard";
 import { Category, CategoryStatus } from "../utils/utils";
+import Image from "next/image";
 
 interface LeftSidebarProps {
   categories: Category[];
@@ -149,7 +150,12 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   return (
     <div className="w-1/3 bg-white shadow-md flex flex-col h-full">
       <div className="p-4 border-b border-gray-200 bg-white">
-        <img src="/energy-institute-logo.svg" alt="The Energy Institute" className="h-10 w-auto" />{" "}
+        <Image
+          src="/energy-institute-logo.svg"
+          alt="The Energy Institute"
+          width={350} // specify the width of your image
+          height={50} // specify the height of your image
+        />
       </div>
 
       {/* Categories container with scroll */}

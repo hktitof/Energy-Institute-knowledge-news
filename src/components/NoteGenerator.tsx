@@ -3,7 +3,7 @@
 import React, { useState, useRef } from "react";
 import { saveAs } from "file-saver";
 import { Document, ExternalHyperlink, Packer, Paragraph, TextRun } from "docx";
-import { X } from "lucide-react";
+
 import { Category } from "@/hooks/useArticleFetching";
 // Import the docx-preview library
 import { renderAsync } from "docx-preview";
@@ -15,7 +15,7 @@ interface KnowledgeNoteGeneratorProps {
   activeTab: string | null;
 }
 
-const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ categories, setActiveTab, activeTab }) => {
+const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ categories, activeTab }) => {
   const [docBlob, setDocBlob] = useState<Blob | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const previewContainerRef = useRef<HTMLDivElement>(null);
