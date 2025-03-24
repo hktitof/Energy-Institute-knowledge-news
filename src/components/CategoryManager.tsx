@@ -74,82 +74,167 @@ export default function CategoryManager({
   return (
     <div className="w-full bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-100">
       {/* Tab Navigation */}
-      <div className="flex border-b overflow-x-auto scrollbar-hide ">
-        <button
-          className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
-            activeTab === "category"
-              ? "border-blue-600 text-blue-600 bg-blue-50"
-              : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-          } hover:cursor-pointer`}
-          onClick={() => toggleTab("category")}
-        >
-          <Plus size={16} className="mr-2" />
-          Add Category
-        </button>
-
-        <button
-          className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
-            activeTab === "search-terms"
-              ? "border-blue-600 text-blue-600 bg-blue-50"
-              : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-          } hover:cursor-pointer`}
-          onClick={() => toggleTab("search-terms")}
-        >
-          <Type size={16} className="mr-2" />
-          Search Terms
-        </button>
-
-        {activeTab === "links" && (
-          <button
-            className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
-              activeTab === "links"
-                ? "border-blue-600 text-blue-600 bg-blue-50"
-                : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-            } hover:cursor-pointer`}
-            onClick={() => {
-              setActiveTab(null);
-            }}
+      <div className="border-b border-gray-200">
+        <nav className="flex -mb-px">
+          <a
+            onClick={() => toggleTab("category")}
+            className={`group flex items-center whitespace-nowrap py-3 px-5 border-b-2 ${
+              activeTab === "category"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent hover:border-indigo-400 text-gray-600 hover:text-indigo-600"
+            } font-medium transition-colors cursor-pointer`}
           >
-            <LinkIcon size={16} className="mr-2" />
-            Manage Links
-          </button>
-        )}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 mr-2 ${
+                activeTab === "category" ? "text-indigo-500" : "text-gray-400 group-hover:text-indigo-500"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
+              />
+            </svg>
+            Add Category
+          </a>
 
-        <button
-          className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
-            activeTab === "template"
-              ? "border-blue-600 text-blue-600 bg-blue-50"
-              : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-          } hover:cursor-pointer`}
-          onClick={() => toggleTab("template")}
-        >
-          <Settings size={16} className="mr-2" />
-          Summarize Article
-        </button>
-        <button
-          className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
-            activeTab === "template"
-              ? "border-blue-600 text-blue-600 bg-blue-50"
-              : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-          } hover:cursor-pointer`}
-          onClick={() => toggleTab("generator")}
-        >
-          <Settings size={16} className="mr-2" />
-          Note Generator
-        </button>
+          <a
+            onClick={() => toggleTab("search-terms")}
+            className={`group flex items-center whitespace-nowrap py-3 px-5 border-b-2 ${
+              activeTab === "search-terms"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent hover:border-indigo-400 text-gray-600 hover:text-indigo-600"
+            } font-medium transition-colors cursor-pointer`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 mr-2 ${
+                activeTab === "search-terms" ? "text-indigo-500" : "text-gray-400 group-hover:text-indigo-500"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            Search Terms
+          </a>
+
+          <a
+            onClick={() => toggleTab("links")}
+            className={`group flex items-center whitespace-nowrap py-3 px-5 border-b-2 ${
+              activeTab === "links"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent hover:border-indigo-400 text-gray-600 hover:text-indigo-600"
+            } font-medium transition-colors cursor-pointer`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 mr-2 ${
+                activeTab === "links" ? "text-indigo-500" : "text-gray-400 group-hover:text-indigo-500"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              />
+            </svg>
+            Manage Links
+          </a>
+
+          <a
+            onClick={() => toggleTab("template")}
+            className={`group flex items-center whitespace-nowrap py-3 px-5 border-b-2 ${
+              activeTab === "template"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent hover:border-indigo-400 text-gray-600 hover:text-indigo-600"
+            } font-medium transition-colors cursor-pointer`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 mr-2 ${
+                activeTab === "template" ? "text-indigo-500" : "text-gray-400 group-hover:text-indigo-500"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            Summarize Article
+          </a>
+
+          <a
+            onClick={() => toggleTab("generator")}
+            className={`group flex items-center whitespace-nowrap py-3 px-5 border-b-2 ${
+              activeTab === "generator"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent hover:border-indigo-400 text-gray-600 hover:text-indigo-600"
+            } font-medium transition-colors cursor-pointer`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 mr-2 ${
+                activeTab === "generator" ? "text-indigo-500" : "text-gray-400 group-hover:text-indigo-500"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+              />
+            </svg>
+            Note Generator
+          </a>
+
+          {!(activeTab === null) && (
+            <a
+              onClick={() => setActiveTab(null)}
+              className="group flex items-center whitespace-nowrap py-3 px-5 border-b-2 border-transparent hover:border-gray-300 font-medium text-gray-500 hover:text-gray-700 transition-colors cursor-pointer ml-auto"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-2 text-gray-400 group-hover:text-gray-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                {activeTab ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                )}
+              </svg>
+              {activeTab ? "Collapse" : "Expand"}
+            </a>
+          )}
+        </nav>
       </div>
+
       {/* Content Panels */}
       {activeTab === "category" && (
         <div className="p-5 bg-white animate-fadeIn">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-800">Add New Category</h3>
-            <button
-              onClick={() => setActiveTab(null)}
-              className="bg-gray-400 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hover:cursor-pointer"
-            >
-              <X size={16} className="mr-1" />
-              {/* Close */}
-            </button>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
             <CategoryAdder
@@ -176,13 +261,6 @@ export default function CategoryManager({
         <div className="p-5 bg-white animate-fadeIn">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-800">Add Search Terms</h3>
-            <button
-              onClick={() => setActiveTab(null)}
-              className="bg-gray-400 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hover:cursor-pointer"
-            >
-              <X size={16} className="mr-1" />
-              {/* Close */}
-            </button>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
             <SearchTermAdder categories={categories} fetchCategories={fetchCategories} setCategories={setCategories} />
@@ -195,14 +273,6 @@ export default function CategoryManager({
             {/* <h2 className="text-2xl font-semibold text-gray-800 mb-6">{selectedCategoryName} Links</h2> */}
             {/* // add hide button which is not rectangle buse like a gray button, that has an 
             // arrow directed to the top */}
-            <button
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 hover:cursor-pointer"
-              onClick={() => {
-                setActiveTab(null);
-              }}
-            >
-              <X size={16} />
-            </button>
           </div>
 
           {/* Horizontal Add Link Form */}

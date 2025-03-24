@@ -180,13 +180,7 @@ Return your response as a JSON object with this exact format:
       <div className="mb-6">
         <div className="flex justify-between">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Article Summarizer</h1>
-          <button
-            onClick={() => setActiveParentTab(null)}
-            className="bg-gray-400 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hover:cursor-pointer"
-          >
-            <X size={16} className="mr-1" />
-            {/* Close */}
-          </button>
+         
         </div>
         <p className="text-gray-600">Extract and summarize content from any article URL or pasted text</p>
       </div>

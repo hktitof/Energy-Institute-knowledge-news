@@ -307,31 +307,11 @@ const KnowledgeNoteGenerator: React.FC<KnowledgeNoteGeneratorProps> = ({ categor
 
   return (
     <div className="my-4">
-      <div className="flex justify-between items-center mb-4 px-6">
-        <h2 className="text-xl font-semibold text-gray-800">Knowledge Note Generator</h2>
-        <div className="flex space-x-2">
-          <button
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed hover:cursor-pointer"
-            onClick={() => setActiveTab("generator")}
-          >
-            Generate
-          </button>
-          <button
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 hover:cursor-pointer"
-            onClick={() => {
-              setActiveTab(null);
-            }}
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-
       {activeTab === "generator" && (
         <div className="px-6 pb-6 pt-3 bg-white rounded-lg shadow-sm">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-800">Knowledge Note Preview</h3>
+              <h2 className="text-xl font-semibold text-gray-800">Knowledge Note Generator</h2>
               <div className="flex space-x-2">
                 <button
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed"

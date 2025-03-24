@@ -97,7 +97,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </div>
           <p className="text-gray-600 mb-4">The database might be unavailable or still resuming.</p>
           <button
-            onClick ={
+            onClick={
               // refrech the page
               () => window.location.reload()
             }
@@ -149,7 +149,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   return (
     <div className="w-1/3 bg-white shadow-md flex flex-col h-full">
       <div className="p-4 border-b border-gray-200 bg-white">
-        <h1 className="text-2xl font-bold text-gray-800">News Aggregator</h1>
+        <img src="/energy-institute-logo.svg" alt="The Energy Institute" className="h-10 w-auto" />{" "}
       </div>
 
       {/* Categories container with scroll */}
