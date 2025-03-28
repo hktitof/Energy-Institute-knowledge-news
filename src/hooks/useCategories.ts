@@ -22,6 +22,30 @@ export const refetchCategories = async (setCategories: React.Dispatch<React.SetS
   }
 };
 
+// Define the structure for article updates
+interface UpdateArticlePayload {
+  categoryId: number | string; // Match your Category ID type
+  articleId: string; // Match your Article ID type
+  newDetails: {
+    title?: string;
+    summary?: string;
+  };
+}
+
+// Name for the global object - use something unique
+const NEXT_APP_STATE_ACCESSOR = "__MY_CATEGORY_APP_STATE_ACCESSOR__";
+
+declare global {
+  interface Window {
+    [NEXT_APP_STATE_ACCESSOR]:
+      | {
+          getState: () => Category[];
+          updateArticle: (payload: UpdateArticlePayload) => { success: boolean; error?: string };
+        }
+      | undefined;
+  }
+}
+
 export const useCategories = ({ isTestMode = false, maxRetries = 5, retryDelay = 3000 }: UseCategoriesProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const isLoadingChangeCount = useRef(0);
@@ -32,6 +56,18 @@ export const useCategories = ({ isTestMode = false, maxRetries = 5, retryDelay =
   const [error, setError] = useState<string | null>(null);
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState<string>("");
+
+  // --- Refs to access state and setters from window functions ---
+  const categoriesRef = useRef(categories);
+  const setCategoriesRef = useRef(setCategories);
+
+  // Keep refs updated
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
+  useEffect(() => {
+    setCategoriesRef.current = setCategories;
+  }, []); // setCategories identity is stable
 
   // Load categories with retry logic
   const loadCategories = useCallback(
@@ -154,6 +190,89 @@ export const useCategories = ({ isTestMode = false, maxRetries = 5, retryDelay =
       setDeletingCategoryId(null);
     }
   };
+
+  // --- Function to update a specific article state ---
+  const updateArticleInState = useCallback(({ categoryId, articleId, newDetails }: UpdateArticlePayload) => {
+    console.log(
+      `[NextApp] Received request to update article: categoryId=${categoryId}, articleId=${articleId}`,
+      newDetails
+    );
+    setCategoriesRef.current(prevCategories => {
+      return prevCategories.map(category => {
+        // Ensure consistent type comparison (string vs number) if needed
+        if (String(category.id) === String(categoryId)) {
+          return {
+            ...category,
+            articles: category.articles.map(article => {
+              if (article.id === articleId) {
+                console.log(`[NextApp] Updating article "${article.title}" to "${newDetails.title}"`);
+                return {
+                  ...article,
+                  title: newDetails.title ?? article.title, // Update only if provided
+                  summary: newDetails.summary ?? article.summary,
+                };
+              }
+              return article;
+            }),
+          };
+        }
+        return category;
+      });
+    });
+    // Optionally, add a toast notification here
+    // toast.info(`Article updated internally: ${newDetails.title}`);
+  }, []); // Depends only on the stable setCategoriesRef
+
+  // --- Expose functions to the window object on mount ---
+  useEffect(() => {
+    console.log("[NextApp] Attempting to expose state accessor functions to window...");
+
+    const accessorObject = {
+      // Create the object first
+      getState: () => {
+        console.log("[NextApp] getState called by extension/injected script");
+        try {
+          return JSON.parse(JSON.stringify(categoriesRef.current));
+        } catch (e) {
+          console.error("[NextApp] Error stringifying state for extension:", e);
+          return [];
+        }
+      },
+      updateArticle: (payload: UpdateArticlePayload) => {
+        if (payload && payload.categoryId && payload.articleId && payload.newDetails) {
+          updateArticleInState(payload);
+          return { success: true };
+        } else {
+          console.error("[NextApp] Invalid payload received for updateArticle:", payload);
+          return { success: false, error: "Invalid payload structure" };
+        }
+      },
+    };
+
+    // Assign the object to the window property
+    window[NEXT_APP_STATE_ACCESSOR] = accessorObject;
+
+    // --- ADD THIS LOG ---
+    // Log the specific window property right after assigning it
+    console.log(`[NextApp] window[${NEXT_APP_STATE_ACCESSOR}] assigned. Value:`, window[NEXT_APP_STATE_ACCESSOR]);
+    // You can also specifically check the type of getState
+    if (window[NEXT_APP_STATE_ACCESSOR]) {
+      console.log(
+        `[NextApp] typeof window[${NEXT_APP_STATE_ACCESSOR}].getState:`,
+        typeof window[NEXT_APP_STATE_ACCESSOR].getState
+      );
+    } else {
+      console.warn(
+        `[NextApp] window[${NEXT_APP_STATE_ACCESSOR}] is still undefined immediately after assignment attempt!`
+      );
+    }
+    // --- END OF ADDED LOG ---
+
+    return () => {
+      console.log("[NextApp] Cleaning up state accessor functions from window");
+      delete window[NEXT_APP_STATE_ACCESSOR];
+    };
+  }, [updateArticleInState]);
 
   return {
     categories,

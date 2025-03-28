@@ -15,7 +15,7 @@ import LeftSidebar from "@/components/LeftSidebar";
 import CategoryComponent from "../components/CategoryComponent";
 import { NewsAggregatorProps } from "../utils/utils";
 
-export default function NewsAggregator({ isTestMode = false }: NewsAggregatorProps): ReactElement {
+export default function NewsAggregator({ isTestMode = true }: NewsAggregatorProps): ReactElement {
   // Use our custom hooks to handle different concerns
   const {
     categories,
@@ -63,6 +63,7 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
         <link rel="icon" href="/favicon-16x16.png" />
         {/* Optional: Add more meta tags as needed */}
         <meta name="description" content="News aggregator application" />
+        
       </Head>
       <div className="flex h-screen bg-gray-50">
         {/* Left sidebar with categories */}

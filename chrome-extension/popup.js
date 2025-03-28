@@ -7,6 +7,57 @@ const clearResultsButton = document.getElementById("clear-results-button");
 const progressBarContainer = document.getElementById("progress-bar-container");
 const progressBar = document.getElementById("progress-bar");
 
+const fixFailedButton = document.getElementById("fix-failed-button");
+const fixStatus = document.getElementById("fix-status");
+
+fixFailedButton.addEventListener("click", async () => {
+  setLoadingState(true);
+  fixStatus.textContent = "Requesting page scan from background..."; // Update status text
+  fixStatus.style.color = "#7f8c8d";
+
+  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    if (tabs.length === 0 || !tabs[0].id) {
+      fixStatus.textContent = "Error: Could not get active tab ID.";
+      fixStatus.style.color = "#c0392b";
+      setLoadingState(false);
+      return;
+    }
+    const activeTabId = tabs[0].id;
+
+    // Send message to the BACKGROUND script, including the target tab ID
+    chrome.runtime.sendMessage(
+      {
+        type: "SCAN_PAGE_FOR_FAILED_ARTICLES", // Send to background
+        targetTabId: activeTabId, // Include the tab ID
+      },
+      response => {
+        // Response comes from the BACKGROUND script now
+        if (chrome.runtime.lastError) {
+          fixStatus.textContent = `Error communicating with background: ${chrome.runtime.lastError.message}.`;
+          fixStatus.style.color = "#c0392b";
+          console.error("Error sending SCAN message to background:", chrome.runtime.lastError);
+          setLoadingState(false);
+        } else if (response && response.status === "scan_initiated") {
+          fixStatus.textContent = "Scan initiated by background...";
+        } else if (response && response.status === "app_not_found") {
+          fixStatus.textContent = "Error: App state accessor not found on page (reported by background).";
+          fixStatus.style.color = "#c0392b";
+          setLoadingState(false);
+        } else if (response && response.status === "error") {
+          fixStatus.textContent = `Error during scan: ${response.error}`;
+          fixStatus.style.color = "#c0392b";
+          setLoadingState(false);
+        } else {
+          fixStatus.textContent = "Error: Unexpected response from background script.";
+          fixStatus.style.color = "#c0392b";
+          setLoadingState(false);
+        }
+        // setLoadingState(false) will be handled by FIX_PROCESS_UPDATE when complete
+      }
+    );
+  });
+});
+
 // --- Event Listeners ---
 
 fetchButton.addEventListener("click", async () => {
@@ -78,6 +129,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       setLoadingState(false);
       hideProgress();
       break;
+    case "FIX_PROCESS_UPDATE":
+      fixStatus.textContent = message.text;
+      fixStatus.style.color =
+        message.level === "error" ? "#c0392b" : message.level === "success" ? "#27ae60" : "#7f8c8d";
+      if (message.isComplete) {
+        setLoadingState(false); // Disable loading only when process is fully complete
+      }
+      break;
     default:
       console.warn("Unknown message type received:", message.type);
   }
@@ -85,6 +144,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   sendResponse({ status: "received from popup" });
   return true; // Indicate async response is possible (though not strictly needed here)
 });
+
+// Reset fix status on popup open
+fixStatus.textContent = "";
 
 // --- UI Update Functions ---
 

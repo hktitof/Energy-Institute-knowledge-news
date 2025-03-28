@@ -7,9 +7,20 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "script-src 'self' 'unsafe-eval';",
+          },
+        ],
+      },
+    ];
+  },
 };
 
-// Export the config wrapped with the bundle analyzer
 export default withBundleAnalyzer(nextConfig);
