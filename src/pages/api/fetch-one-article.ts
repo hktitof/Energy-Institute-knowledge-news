@@ -166,20 +166,32 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
               messages: [
                 {
                   role: "user",
-                  content: `Create a concise summary (maximum ${maxWords} words) of the following article. Focus only on the key information, main arguments, and essential details. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
-              
-              Article title: ${title}
-              Article content: ${textContent}
-              
-              IMPORTANT: For the title, use the COMPLETE original article title WITHOUT truncating or modifying it, even if it contains characters like hyphens, pipes, or dashes. Keep the title exactly as it appears in the article.
-              
-              Return your response as a JSON object with this exact format, without any markdown formatting or code blocks:
-              {
-                "title": "The complete, unmodified article title",
-                "summary": "The concise summary of the article"
-              }
-              
-              IMPORTANT: Return only the raw JSON object, no markdown formatting, no code blocks, no backticks.`,
+                  content: `Your primary task is to first analyze the provided 'Article content' to determine if it represents a standard news article, blog post, or similar informative piece with a narrative structure. Differentiate this from content that is primarily a company landing page, product description, navigation page, or general promotional material.
+
+                  Article title provided: ${title}
+                  Article content provided: ${textContent}
+    
+                  If the content IS a standard article/blog post:
+                  1. Create a concise summary (maximum ${maxWords} words) of the article. Focus only on the key information, main arguments, and essential details.
+                  2. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
+                  3. For the title field in the JSON, use the COMPLETE original article title provided (${title}) WITHOUT truncating or modifying it, even if it contains characters like hyphens, pipes, or dashes. Keep the title exactly as provided.
+                  4. Return your response as a JSON object with this exact format:
+                     {
+                       "title": "The complete, unmodified article title",
+                       "summary": "The concise summary of the article"
+                     }
+    
+                  If the content IS NOT a standard article/blog post (e.g., it's a company homepage, landing page, product list, etc.):
+                  1. Return a JSON object indicating this.
+                  2. Set the value of the "title" field to the exact string "NOT AN ARTICLE".
+                  3. Set the value of the "summary" field to the exact string "Content does not appear to be a summarizable article.".
+                  4. The JSON object should have this exact format:
+                     {
+                       "title": "NOT AN ARTICLE",
+                       "summary": "Content does not appear to be a summarizable article."
+                     }
+    
+                  IMPORTANT: Regardless of whether you summarize or determine it's not an article, return ONLY the raw JSON object as specified in the relevant case above. Do not include any markdown formatting, code blocks, backticks, or any text outside the JSON structure.`,
                 },
               ],
               max_tokens: 800,

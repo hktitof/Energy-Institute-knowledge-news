@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Summarizer</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Article Summarizer</h1>
+
+      <div class="input-section">
+        <label for="url-list">Paste Article URLs (one per line):</label>
+        <textarea
+          id="url-list"
+          rows="8"
+          placeholder="https://example.com/article1
+https://anothersite.net/news/story"
+        ></textarea>
+        <div class="button-group">
+          <button id="fetch-button">Fetch Articles</button>
+          <button id="clear-button" class="secondary">Clear List</button>
+        </div>
+      </div>
+
+      <div id="status-area">
+        <p id="status-message"></p>
+        <div id="progress-bar-container" style="display: none">
+          <div id="progress-bar"></div>
+        </div>
+      </div>
+
+      <div class="results-section">
+        <h2>Results</h2>
+        <div class="table-container">
+          <table id="results-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Summary</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Results will be added here -->
+            </tbody>
+          </table>
+        </div>
+        <button id="clear-results-button" class="secondary" style="display: none">Clear Results</button>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
