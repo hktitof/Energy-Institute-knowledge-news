@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ExternalLink, Edit, Save, Copy, Eye, Check, X } from "lucide-react";
+import { ExternalLink, Edit, Save, Copy, Eye, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Category, Article } from "@/utils/utils";
 import Image from "next/image";
 import { AlertCircle } from "lucide-react";
+
+import {
+  AlertTriangle, // Added for "NOT AN ARTICLE"
+  XCircle, // Added for errors
+} from "lucide-react";
 
 // Define types for the component props and data structure
 interface ToggleArticleSelectionParams {
@@ -22,6 +27,7 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
   const [editingArticle, setEditingArticle] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editSummary, setEditSummary] = useState("");
+  const [expandedSummaries, setExpandedSummaries] = useState<Record<string, boolean>>({});
 
   // State for preview modal
   const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
@@ -254,146 +260,251 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
     });
   };
 
+  // Helper function to determine the article state (optional but good practice)
+  const getArticleState = (article: {
+    title?: string | null;
+    summary?: string | null;
+  }): "normal" | "not_an_article" | "error" => {
+    const titleLower = (article.title || "").toLowerCase();
+    if (titleLower === "not an article") {
+      return "not_an_article";
+    }
+    // Add more specific error checks if needed
+    if (titleLower.includes("access denied") || titleLower.includes("fetch error") || titleLower === "error") {
+      return "error";
+    }
+    return "normal";
+  };
+
+  // --- Inside your component where the table row is rendered ---
+
+  // Assuming you have `article`, `index`, `category`, `editingArticle`, `editTitle`, `setEditTitle`,
+  // `editSummary`, `setEditSummary`, `handleSaveEdit`, `setEditingArticle`, `handleEditClick`,
+  // `handlePreview`, `handleCopyLink`, `copiedArticleId`, `handleCheckboxChange` defined
+
+  // const articleState = getArticleState(article);
+  // const isSpecialState = articleState === "not_an_article" || articleState === "error";
+
+  const toggleSummaryExpansion = (articleId: string) => {
+    setExpandedSummaries(prev => ({
+      ...prev,
+      [articleId]: !prev[articleId], // Toggle the boolean value
+    }));
+  };
+
   return (
     <>
       <tbody className="bg-white divide-y divide-gray-200">
         {category.articles && category.articles.length > 0 ? (
           // Existing articles rendering
-          category.articles.map((article, index) => (
-            <tr key={article.id}>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <input
-                  type="checkbox"
-                  checked={article.selected || false}
-                  onChange={e => handleCheckboxChange(category.id, article.id, e)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-              </td>
-
-              <td className="text-center py-4">
-                <div
-                  className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
-                    article.title?.includes("Access Denied") ||
-                    article.title?.includes("Fetch Error") ||
-                    article.title?.includes("Error")
-                      ? "text-red-600 font-bold"
-                      : "text-gray-900"
-                  }`}
-                >
-                  {index + 1}
-                </div>
-              </td>
-
-              <td className="px-6 py-4">
-                {editingArticle === article.id ? (
+          category.articles.map((article, index) => {
+            const articleState = getArticleState(article);
+            const isSpecialState = articleState === "not_an_article" || articleState === "error";
+            return (
+              <tr
+                key={article.id}
+                className={`
+                border-b border-gray-200 transition-colors duration-150 ease-in-out
+                ${isSpecialState ? "bg-gray-50" : "bg-white"}
+                ${editingArticle === article.id ? "bg-blue-50/50" : ""}
+                hover:bg-blue-50/30
+                `}
+              >
+                {/* Checkbox */}
+                <td className="px-4 py-3 align-top w-12">
                   <input
-                    type="text"
-                    value={editTitle}
-                    onChange={e => setEditTitle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    type="checkbox"
+                    checked={article.selected || false}
+                    onChange={e => handleCheckboxChange(category.id, article.id, e)}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                   />
-                ) : (
-                  <div
-                    className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
-                      article.title?.includes("Access Denied") ||
-                      article.title?.includes("Fetch Error") ||
-                      article.title?.includes("Error")
-                        ? "text-red-600 font-bold"
-                        : "text-gray-900"
-                    }`}
-                  >
-                    {article.title || "---------------------------"}
-                  </div>
-                )}
-              </td>
-              <td className="px-6 py-4">
-                {editingArticle === article.id ? (
-                  <textarea
-                    value={editSummary}
-                    onChange={e => setEditSummary(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    rows={3}
-                  />
-                ) : (
-                  <div
-                    className={`text-sm font-medium ${article.title ? "" : "text-center"} ${
-                      article.title?.includes("Access Denied") ||
-                      article.title?.includes("Fetch Error") ||
-                      article.title?.includes("Error")
-                        ? "text-red-600 font-bold"
-                        : "text-gray-900"
-                    }`}
-                  >
-                    {article.summary || "---------------------------"}
-                  </div>
-                )}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex justify-end gap-2">
-                  {editingArticle === article.id ? (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleSaveEdit(category.id, article.id)}
-                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 hover:cursor-pointer"
-                      >
-                        <Save size={14} className="mr-1" />
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingArticle(null)}
-                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 hover:cursor-pointer"
-                      >
-                        <X size={14} className="mr-1" />
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleEditClick(article)}
-                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer"
-                    >
-                      <Edit size={14} className="mr-1" />
-                      Edit
-                    </button>
-                  )}
+                </td>
 
-                  <div className="flex border-l pl-2 ml-1">
-                    <div className="flex space-x-1">
+                {/* Index */}
+                <td className="px-2 py-4 align-top w-12 text-center text-xs text-gray-400 font-medium">{index + 1}</td>
+
+                {/* Title & Summary (or Special State Info) */}
+                {articleState === "not_an_article" && (
+                  <td colSpan={2} className="px-6 py-4 align-middle text-sm text-yellow-800 bg-yellow-50/70">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle size={18} className="text-yellow-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold">Content Not Suitable for Summary</p>
+                        <p className="text-xs text-yellow-700">{article.summary}</p> {/* Show the standard message */}
+                      </div>
+                    </div>
+                  </td>
+                )}
+
+                {articleState === "error" && (
+                  <td colSpan={2} className="px-6 py-4 align-middle text-sm text-red-800 bg-red-50/70">
+                    <div className="flex items-center gap-3">
+                      <XCircle size={18} className="text-red-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold">Error Fetching/Processing</p>
+                        <p className="text-xs text-red-700">
+                          {article.title} {article.summary ? `- ${article.summary}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                )}
+
+                {articleState === "normal" && (
+                  <>
+                    {/* Title Column */}
+                    <td className="px-6 py-4 align-top max-w-xs">
+                      {" "}
+                      {/* Added max-w-xs */}
+                      {editingArticle === article.id ? (
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={e => setEditTitle(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                          aria-label="Edit Title"
+                        />
+                      ) : (
+                        <p className="text-sm font-semibold text-gray-800 break-words">
+                          {" "}
+                          {/* Changed font weight/color */}
+                          {article.title || <span className="text-gray-400 italic">No Title Provided</span>}
+                        </p>
+                      )}
+                    </td>
+
+                    {/* Summary Column */}
+                    <td className="px-6 py-4 align-top">
+                      {editingArticle === article.id ? (
+                        <textarea
+                          value={editSummary}
+                          onChange={e => setEditSummary(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                          rows={3}
+                          aria-label="Edit Summary"
+                        />
+                      ) : (
+                        // --- Start modification here ---
+                        <div>
+                          {" "}
+                          {/* Wrap summary and button */}
+                          <p
+                            className={`text-sm text-gray-600 break-words ${
+                              !expandedSummaries[article.id] ? "line-clamp-3" : "" // Apply line-clamp conditionally
+                            }`}
+                          >
+                            {article.summary || <span className="text-gray-400 italic">No Summary Provided</span>}
+                          </p>
+                          {/* Show button only if there IS a summary */}
+                          {article.summary && (
+                            <button
+                              onClick={() => toggleSummaryExpansion(article.id)}
+                              className="mt-1 text-xs text-indigo-600 hover:text-indigo-800 flex items-center hover:cursor-pointer"
+                            >
+                              {expandedSummaries[article.id] ? (
+                                <>
+                                  Show less <ChevronUp size={14} className="ml-1" />
+                                </>
+                              ) : (
+                                <>
+                                  Show more <ChevronDown size={14} className="ml-1 hover:cursor-pointer" />
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </>
+                )}
+
+                {/* Actions Column */}
+                <td className="px-4 py-3 align-top whitespace-nowrap text-right">
+                  <div className="flex justify-end items-center space-x-2">
+                    {editingArticle === article.id ? (
+                      // Save/Cancel Buttons (while editing)
+                      <>
+                        <button
+                          onClick={() => handleSaveEdit(category.id, article.id)}
+                          className="inline-flex items-center px-2.5 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                          title="Save Changes"
+                        >
+                          <Save size={14} className="mr-1" />
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingArticle(null)}
+                          className="inline-flex items-center px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+                          title="Cancel Edit"
+                        >
+                          <X size={14} className="mr-1" />
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      // Edit Button (when not editing)
+                      <button
+                        onClick={() => handleEditClick(article)}
+                        disabled={isSpecialState} // Disable edit for special states
+                        className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors
+                      ${
+                        isSpecialState
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:cursor-pointer"
+                      }
+                      `}
+                        title={isSpecialState ? "Cannot edit this item" : "Edit Title & Summary"}
+                      >
+                        <Edit size={14} className="mr-1" />
+                        Edit
+                      </button>
+                    )}
+
+                    {/* Vertical Divider (Adjust logic if needed) */}
+                    {editingArticle !== article.id && <div className="h-5 w-px bg-gray-200 mx-1"></div>}
+                    {/* ^^ Show divider only when Edit button is present and we are NOT editing ^^ */}
+
+                    {/* View/Link/Copy Buttons Section */}
+                    <div className="flex items-center space-x-1">
+                      {/* Preview Button (Now ALWAYS shown) */}
                       <button
                         onClick={() => handlePreview(article)}
-                        className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors hover:cursor-pointer"
-                        title="Preview"
+                        className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-100 rounded-full transition-colors"
+                        title="Preview" // Changed title slightly as it's not always a summary preview
                       >
                         <Eye size={16} />
                       </button>
+                      {/* NO MORE CONDITIONAL WRAPPER HERE */}
 
+                      {/* Link Button (Always show, uses article.link) */}
                       <a
                         href={article.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                        title="Open link"
+                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+                        title="Open Original Link"
                       >
                         <ExternalLink size={16} />
                       </a>
 
+                      {/* Copy Button (Always show, uses article.link) */}
                       <button
                         onClick={() => handleCopyLink(article.id, article.link)}
                         className={`p-1.5 rounded-full transition-colors ${
                           copiedArticleId === article.id
-                            ? "text-green-600 bg-green-50"
-                            : "text-gray-600 hover:text-purple-600 hover:bg-purple-50 hover:cursor-pointer"
+                            ? "text-green-600 bg-green-100"
+                            : "text-gray-500 hover:text-purple-600 hover:bg-purple-100"
                         }`}
-                        title={copiedArticleId === article.id ? "Copied!" : "Copy link"}
+                        title={copiedArticleId === article.id ? "Link Copied!" : "Copy Link"}
                       >
                         {copiedArticleId === article.id ? <Check size={16} /> : <Copy size={16} />}
                       </button>
                     </div>
                   </div>
-                </div>
-              </td>
-            </tr>
-          ))
+                </td>
+              </tr>
+            );
+          })
         ) : (
           // Modern empty state
           <tr>
@@ -474,63 +585,79 @@ const ArticlesTable: React.FC<ArticlesTableProps> = ({ categories, category, set
             </div>
 
             {/* Modal Body with iframe or loading/error states */}
-            <div className="flex-1 p-0 overflow-hidden relative">
+            <div className="flex-1 overflow-hidden relative bg-gray-100">
+              {" "}
+              {/* Added bg for contrast */}
+              {/* Loading Overlay */}
               {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white">
+                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-20">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
                     <p className="text-gray-600">Loading preview...</p>
                   </div>
                 </div>
               )}
-              {previewError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white">
-                  <div className="text-center p-6 max-w-lg">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-red-50 rounded-full flex items-center justify-center">
-                      <AlertCircle size={24} className="text-red-500" />
+              {/* Error Display */}
+              {previewError &&
+                !isLoading && ( // Show only if error and not loading
+                  <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+                    <div className="text-center p-6 max-w-lg">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-red-50 rounded-full flex items-center justify-center">
+                        <AlertCircle size={24} className="text-red-500" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to load preview</h3>
+                      <p className="mb-6 text-gray-600">
+                        We couldn&apos;t load the content from this website. This might be due to security restrictions or
+                        the website being temporarily unavailable.
+                      </p>
+                      <a
+                        href={previewArticle.link} // Use previewArticle here
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        Open in New Tab
+                      </a>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to load preview</h3>
-                    <p className="mb-6 text-gray-600">
-                      We couldn&apos;t load the content from this website. This might be due to security restrictions or
-                      the website being temporarily unavailable.
-                    </p>
-                    <a
-                      href={previewArticle.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      Open in New Tab
-                    </a>
                   </div>
-                </div>
-              )}
-              {useScreenshot && previewScreenshot && (
-                <div className="w-full h-full flex flex-col items-center justify-start overflow-auto p-4">
-                  <div className="bg-gray-100 p-2 mb-4 w-full rounded-md text-sm text-gray-700">
-                    <div className="flex items-center mb-2">
-                      <AlertCircle size={16} className="text-yellow-500 mr-2" />
-                      <span className="font-medium">Page rendered as image</span>
+                )}
+              {/* Screenshot Display */}
+              {useScreenshot &&
+                previewScreenshot &&
+                !isLoading &&
+                !previewError && ( // Show only if screenshot mode, not loading, no primary error
+                  <div className="absolute inset-0 flex flex-col items-center justify-start overflow-auto p-4 bg-white z-10">
+                    <div className="bg-yellow-50 border border-yellow-200 p-2 mb-4 w-full rounded-md text-sm text-yellow-800">
+                      <div className="flex items-center mb-1">
+                        <AlertCircle size={16} className="text-yellow-600 mr-2 flex-shrink-0" />
+                        <span className="font-medium">Page rendered as image</span>
+                      </div>
+                      <p className="text-xs">
+                        Interactive content couldn&apos;t be displayed safely. Showing a screenshot instead.
+                      </p>
                     </div>
-                    <p>Interactive content couldn&apos;t be displayed safely. Showing a screenshot instead.</p>
+                    {/* Ensure Image uses correct props for Next.js >= 13 */}
+                    <Image
+                      src={previewScreenshot} // Assumes this is a base64 data URL or external URL
+                      alt={`Screenshot of ${previewArticle?.title || "article"}`}
+                      className="max-w-full h-auto border border-gray-200 rounded shadow-sm" // Use h-auto
+                      width={1200} // Provide a reasonable intrinsic width
+                      height={800} // Provide a reasonable intrinsic height
+                      style={{ objectFit: "contain" }} // Adjust object fit if needed
+                      priority={false} // Don't prioritize loading screenshot usually
+                      unoptimized={previewScreenshot.startsWith("data:")} // Important for base64
+                    />
                   </div>
-
-                  <Image
-                    src={previewScreenshot}
-                    alt={`Screenshot of ${previewArticle?.title || "article"}`}
-                    className="max-w-full border border-gray-200 rounded shadow-sm"
-                    width={100}
-                    height={300}
-                    loading="lazy"
-                  />
-                </div>
-              )}
-              {/* The iframe that will be populated with content */}
+                )}
+              {/* Iframe - always rendered but hidden if loading/error/screenshot */}
               <iframe
                 id="preview-iframe"
-                title={previewArticle.title || "Article Preview"}
-                className="w-full h-full border-0"
+                title={previewArticle?.title || "Article Preview"} // Use optional chaining
+                className={`w-full h-full border-0 transition-opacity duration-300 ${
+                  isLoading || previewError || useScreenshot ? "opacity-0" : "opacity-100" // Control visibility via opacity
+                }`}
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox"
+                // src="about:blank" // Optionally set initial src
               />
             </div>
 
