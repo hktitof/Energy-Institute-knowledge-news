@@ -2,7 +2,7 @@
 
 // --- VERY IMPORTANT: Correct this based on your ACTUAL Next.js server ---
 // --- Common setup: http, port 3000, path matching api filename ---
-const isDevelopment = true; // Set this to true for local development, false for production
+const isDevelopment = false; // Set this to true for local development, false for production
 
 // API endpoint configuration
 const API_ENDPOINT = isDevelopment
