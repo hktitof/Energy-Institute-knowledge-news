@@ -36,7 +36,7 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
         });
       },
       {
-        retries: 1,
+        retries: 2,
         minTimeout: 1000,
         factor: 2,
         onRetry: (error: Error) => {
@@ -49,11 +49,15 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
     const dom = new JSDOM(response.data, { url });
     const document = dom.window.document;
 
-    // Extract all visible text
+    // Extract all visible text with improved handling
     function extractAllVisibleText(doc: Document): string {
-      const scripts = doc.querySelectorAll("script, style, noscript, svg, head");
-      scripts.forEach(el => el.remove());
+      // Remove common non-content elements that could interfere with extraction
+      const elementsToRemove = doc.querySelectorAll(
+        "script, style, noscript, svg, head, iframe"
+      );
+      elementsToRemove.forEach(el => el.remove());
 
+      // Improved text extraction from nodes
       function extractTextFromNode(node: Node): string {
         if (node.nodeType === node.TEXT_NODE) {
           return node.textContent?.trim() || "";
@@ -62,40 +66,68 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
           return "";
         }
         const element = node as Element;
+        
+        // Basic hidden element detection
+        const computedStyle = element.getAttribute("style") || "";
         const hasHiddenAttr =
           element.hasAttribute("hidden") ||
           element.getAttribute("aria-hidden") === "true" ||
-          element.getAttribute("style")?.includes("display: none") ||
-          element.getAttribute("style")?.includes("visibility: hidden");
+          computedStyle.includes("display: none") ||
+          computedStyle.includes("visibility: hidden");
+          
         if (hasHiddenAttr) {
           return "";
         }
+        
         let textContent = "";
         for (let i = 0; i < node.childNodes.length; i++) {
           textContent += extractTextFromNode(node.childNodes[i]) + " ";
         }
+        
+        // More comprehensive list of block-level elements
         const blockTags = [
-          "DIV",
-          "P",
-          "H1",
-          "H2",
-          "H3",
-          "H4",
-          "H5",
-          "H6",
-          "LI",
-          "TD",
-          "SECTION",
-          "ARTICLE",
-          "BLOCKQUOTE",
-          "BR",
+          "DIV", "P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "TD", "SECTION", "ARTICLE",
+          "BLOCKQUOTE", "BR", "HR", "UL", "OL", "DL", "PRE", "ADDRESS", "FIGURE", "FIGCAPTION",
+          "MAIN", "HEADER", "FOOTER"
         ];
+        
         if (blockTags.includes(element.tagName)) {
           return "\n" + textContent.trim() + "\n";
         }
         return textContent.trim();
       }
-      const bodyText = extractTextFromNode(doc.body);
+      
+      // Try to find main content area first
+      let bodyText;
+      
+      // Prioritized content selectors - try these first
+      const contentSelectors = [
+        "article", 
+        ".article", 
+        ".post-content", 
+        ".article-content", 
+        "main", 
+        "[role='main']", 
+        ".main-content",
+        "#content",
+        ".content"
+      ];
+      
+      // Try each content selector
+      let mainContent = null;
+      for (const selector of contentSelectors) {
+        mainContent = doc.querySelector(selector);
+        if (mainContent?.textContent && mainContent.textContent.trim().length > 200) {
+          break;
+        }
+      }
+      
+      if (mainContent && mainContent.textContent && mainContent.textContent.trim().length > 200) {
+        bodyText = extractTextFromNode(mainContent);
+      } else {
+        bodyText = extractTextFromNode(doc.body);
+      }
+      
       return bodyText
         .replace(/\n{3,}/g, "\n\n")
         .replace(/\s+/g, " ")
@@ -108,13 +140,34 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
         .trim();
     }
 
-    // Extract and clean the title
+    // Extract and clean the title with improved handling
     const rawTitle = document.title || "";
-    const h1Elements = document.querySelectorAll("h1");
-    const mainHeading = h1Elements.length > 0 ? h1Elements[0].textContent?.trim() || "" : "";
+    
+    // Try multiple approaches for title extraction
+    const titleSelectors = [
+      "h1.article-title", 
+      "h1.entry-title", 
+      "h1.headline", 
+      "h1.title", 
+      "article h1", 
+      ".article-header h1",
+      ".post-title",
+      "main h1",
+      "h1"
+    ];
+    
+    let mainHeading = "";
+    for (const selector of titleSelectors) {
+      const headingElement = document.querySelector(selector);
+      if (headingElement && headingElement.textContent) {
+        mainHeading = headingElement.textContent.trim();
+        break;
+      }
+    }
+    
     let title = mainHeading || rawTitle;
 
-    // Instead of removing everything after a dash/pipe, only remove common website suffixes
+    // Only remove common website suffixes if needed
     const commonSuffixes = [
       /\s*-\s*[A-Z][a-z]+(\.[a-z]+)+$/, // - Website.com
       /\s*\|\s*[A-Z][a-z]+(\.[a-z]+)+$/, // | Website.com
@@ -135,7 +188,20 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
     }
 
     // Extract text content
-    const textContent = extractAllVisibleText(document);
+    let textContent = extractAllVisibleText(document);
+    
+    // Pre-process text for better formatting
+    textContent = textContent
+      .replace(/\s+/g, ' ')
+      .replace(/\n+/g, '\n')
+      .trim();
+    
+    // Basic cleanup for poor content extraction cases
+    if (textContent.length < 100 && dom.window.document.body.textContent) {
+      textContent = dom.window.document.body.textContent
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
 
     // Azure OpenAI API call
     const endpoint = process.env.AZURE_OPENAI_API_BASE?.replace(/\/$/, "");
@@ -165,33 +231,47 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
             body: JSON.stringify({
               messages: [
                 {
+                  role: "system",
+                  content: `You are an expert at analyzing web content and creating summaries of articles, blog posts, and informative content. You can identify whether content is an article worthy of summarization or not. You're designed to be inclusive and summarize a wide range of content formats, including technical descriptions, project overviews, and news articles, even if they have unconventional structures.`
+                },
+                {
                   role: "user",
-                  content: `Your primary task is to first analyze the provided 'Article content' to determine if it represents a standard news article, blog post, or similar informative piece with a narrative structure. Differentiate this from content that is primarily a company landing page, product description, navigation page, or general promotional material.
+                  content: `I need you to analyze the following web content and determine if it's a summarizable article, news post, project description, or other informative content. 
 
-                  Article title provided: ${title}
-                  Article content provided: ${textContent}
-    
-                  If the content IS a standard article/blog post:
-                  1. Create a concise summary (maximum ${maxWords} words) of the article. Focus only on the key information, main arguments, and essential details.
-                  2. The summary should be professional and focused without any introductory phrases like "This article discusses" or "Summary:".
-                  3. For the title field in the JSON, use the COMPLETE original article title provided (${title}) WITHOUT truncating or modifying it, even if it contains characters like hyphens, pipes, or dashes. Keep the title exactly as provided.
-                  4. Return your response as a JSON object with this exact format:
-                     {
-                       "title": "The complete, unmodified article title",
-                       "summary": "The concise summary of the article"
-                     }
-    
-                  If the content IS NOT a standard article/blog post (e.g., it's a company homepage, landing page, product list, etc.):
-                  1. Return a JSON object indicating this.
-                  2. Set the value of the "title" field to the exact string "NOT AN ARTICLE".
-                  3. Set the value of the "summary" field to the exact string "Content does not appear to be a summarizable article.".
-                  4. The JSON object should have this exact format:
-                     {
-                       "title": "NOT AN ARTICLE",
-                       "summary": "Content does not appear to be a summarizable article."
-                     }
-    
-                  IMPORTANT: Regardless of whether you summarize or determine it's not an article, return ONLY the raw JSON object as specified in the relevant case above. Do not include any markdown formatting, code blocks, backticks, or any text outside the JSON structure.`,
+Title extracted from the page: ${title}
+
+Content extracted from the page:
+---
+${textContent}
+---
+
+First, determine if this is SUMMARIZABLE CONTENT. Content is summarizable if it:
+1. Contains informative, factual, or news-related information
+2. Has a coherent narrative or structure
+3. Provides details about events, projects, research, products, etc.
+4. Is NOT primarily navigation menus, sparse listings, or computer-generated code
+
+Even if the content has an unconventional structure or is presented as a project overview, product description, or technical information, it can still be summarizable if it communicates meaningful information.
+
+If the content IS summarizable, create a concise summary (maximum ${maxWords} words) capturing the key information.
+
+If the content is NOT summarizable (meaning it's just navigation elements, random text snippets without context, or computer code), indicate this in your response.
+
+Return your analysis as a JSON object with this format:
+{
+  "is_summarizable": true/false,
+  "title": "The original title or improved version if needed",
+  "summary": "Your concise summary of the content"
+}
+
+For non-summarizable content, use:
+{
+  "is_summarizable": false,
+  "title": "NOT AN ARTICLE",
+  "summary": "Content does not appear to be a summarizable article."
+}
+
+IMPORTANT: Be inclusive in what you consider summarizable. Technical descriptions, project information, research findings, and product details ARE summarizable even if they don't follow traditional article formats.`,
                 },
               ],
               max_tokens: 800,
@@ -243,6 +323,15 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
         .replace(/```\s*$/, "")
         .trim();
       jsonOutput = JSON.parse(cleanedOutput);
+      
+      // Check if this is summarizable content
+      if (!jsonOutput.is_summarizable) {
+        return { 
+          title: "NOT AN ARTICLE", 
+          summary: "Content does not appear to be a summarizable article." 
+        };
+      }
+      
       if (!jsonOutput.title || !jsonOutput.summary) {
         throw new Error("Invalid JSON structure");
       }
