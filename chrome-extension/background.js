@@ -2,7 +2,13 @@
 
 // --- VERY IMPORTANT: Correct this based on your ACTUAL Next.js server ---
 // --- Common setup: http, port 3000, path matching api filename ---
-const API_ENDPOINT = "http://localhost:3000/api/extension-summarize-content"; // <-- VERIFY & CHANGE THIS
+const isDevelopment = true; // Set this to true for local development, false for production
+
+// API endpoint configuration
+const API_ENDPOINT = isDevelopment
+  ? "http://localhost:3000/api/extension-summarize-content"
+  : "https://red-dune-02862ed03.6.azurestaticapps.net/api/extension-summarize-content";
+// <-- VERIFY & CHANGE THIS
 const NEXT_APP_STATE_ACCESSOR = "__MY_CATEGORY_APP_STATE_ACCESSOR__"; // Needs to be known here too
 
 let currentProcessingQueue = [];
@@ -541,26 +547,41 @@ async function getContentFromTab(tabId) {
 }
 
 // Closes a tab
-async function closeTab(tabId) { /* ... as before ... */
- try { await chrome.tabs.remove(tabId); }
- catch (error) { console.warn(`Could not close tab ${tabId} (may already be closed):`, error.message); }
+async function closeTab(tabId) {
+  /* ... as before ... */
+  try {
+    await chrome.tabs.remove(tabId);
+  } catch (error) {
+    console.warn(`Could not close tab ${tabId} (may already be closed):`, error.message);
+  }
 }
-function sendMessageToPopup(message) { /* ... as before ... */
- chrome.runtime.sendMessage(message).catch(error => {
-      if (error.message.includes("Receiving end does not exist")) { /* Expected if popup closed */ }
-      else { console.error("Error sending message to popup:", error.message, message); }
+function sendMessageToPopup(message) {
+  /* ... as before ... */
+  chrome.runtime.sendMessage(message).catch(error => {
+    if (error.message.includes("Receiving end does not exist")) {
+      /* Expected if popup closed */
+    } else {
+      console.error("Error sending message to popup:", error.message, message);
+    }
   });
 }
 
 // Helper to shorten URLs for display
-function getShortUrl(url, maxLength = 50) { /* ... as before ... */
-    if (!url) return "Invalid URL"; if (url.length <= maxLength) return url;
-    try {
-      const parsedUrl = new URL(url); let short = parsedUrl.hostname + parsedUrl.pathname;
-      if (short.endsWith("/")) short = short.slice(0, -1);
-      if (short.length > maxLength) { short = short.substring(0, maxLength - 3) + "..."; }
-      return short;
-    } catch { return url.length > maxLength ? url.substring(0, maxLength - 3) + "..." : url; }
+function getShortUrl(url, maxLength = 50) {
+  /* ... as before ... */
+  if (!url) return "Invalid URL";
+  if (url.length <= maxLength) return url;
+  try {
+    const parsedUrl = new URL(url);
+    let short = parsedUrl.hostname + parsedUrl.pathname;
+    if (short.endsWith("/")) short = short.slice(0, -1);
+    if (short.length > maxLength) {
+      short = short.substring(0, maxLength - 3) + "...";
+    }
+    return short;
+  } catch {
+    return url.length > maxLength ? url.substring(0, maxLength - 3) + "..." : url;
   }
+}
 
 console.log("Background service worker (v1.1a - Content Extractor Debug) started.");

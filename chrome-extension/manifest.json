@@ -22,7 +22,7 @@
   },
   "host_permissions": [
     "http://localhost:3000/api/extension-summarize-content",
-    "https://your-deployed-api.com/api/summarize-content",
+    "https://red-dune-02862ed03.6.azurestaticapps.net/api/extension-summarize-content",
     "<all_urls>"
   ],
   "content_scripts": [
