@@ -1,22 +1,23 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "target": "ES2021", // <--- UPDATED
+    "lib": ["dom", "dom.iterable", "esnext", "ES2021"], // <--- UPDATED
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": true,
+    "noEmit": false, // <--- CHANGE THIS TO false - you NEED to emit JS files to run them!
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "bundler", // Or consider changing to "node" if you still have trouble
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "outDir": "./dist", // Recommended: Add an output directory for compiled JS
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/pages/api/links/delete.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"], // Make sure this includes test-db-connection.ts
   "exclude": ["node_modules"]
 }
