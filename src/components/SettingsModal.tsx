@@ -4,13 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 const var_systemPrompt =
   "You are an expert at analyzing web content and creating summaries of articles, blog posts, and informative content. You can identify whether content is an article worthy of summarization or not. You're designed to be inclusive and summarize a wide range of content formats, including technical descriptions, project overviews, and news articles, even if they have unconventional structures";
 
-const var_userPromptInstructions =  `I need you to analyze the following web content and determine if it's a summarizable article, news post, project description, or other informative content.
+const var_userPromptInstructions = `I need you to analyze the following web content and determine if it's a summarizable article, news post, project description, or other informative content.
 
-Title extracted from the page: ${'{title}'}
+Title extracted from the page: ${"{title}"}
 
 Content extracted from the page:
 ---
-${'{textContent}'}
+${"{textContent}"}
 ---
 
 First, determine if this is SUMMARIZABLE CONTENT. Content is summarizable if it:
@@ -21,7 +21,7 @@ First, determine if this is SUMMARIZABLE CONTENT. Content is summarizable if it:
 
 Even if the content has an unconventional structure or is presented as a project overview, product description, or technical information, it can still be summarizable if it communicates meaningful information.
 
-If the content IS summarizable, create a concise summary (maximum ${'{maxWords}'} words) capturing the key information.
+If the content IS summarizable, create a concise summary (maximum ${"{maxWords}"} words) capturing the key information.
 
 If the content is NOT summarizable (meaning it's just navigation elements, random text snippets without context, or computer code), indicate this in your response.
 
@@ -61,8 +61,13 @@ const SettingsModal = ({
   const [isEdited, setIsEdited] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Update state when props change
+  const isAtInitialDefault = systemPrompt === var_systemPrompt && userPromptInstructions === var_userPromptInstructions;
+
+  // Update state when props change (can potentially be removed if parent never passes props)
   useEffect(() => {
+    // This effect might be causing confusion if props *were* ever passed.
+    // If the parent *never* passes these props, you can remove this useEffect.
+    // For now, let's assume it might be needed later.
     if (defaultSystemPrompt) setSystemPrompt(defaultSystemPrompt);
     if (defaultUserPromptInstructions) setUserPromptInstructions(defaultUserPromptInstructions);
   }, [defaultSystemPrompt, defaultUserPromptInstructions]);
@@ -73,14 +78,15 @@ const SettingsModal = ({
       systemPrompt,
       userPromptInstructions,
     });
-    setIsEdited(false);
+    setIsEdited(false); // Correct: Mark as not edited relative to the *saved* state
   };
 
-  // Handle reset to defaults
   const handleReset = () => {
-    setSystemPrompt(defaultSystemPrompt || "");
-    setUserPromptInstructions(defaultUserPromptInstructions || "");
-    setIsEdited(false);
+    console.log("Resetting system prompt to:", var_systemPrompt); // Use constant directly for clarity
+    console.log("Resetting user instructions to:", var_userPromptInstructions); // Use constant directly for clarity
+    setSystemPrompt(var_systemPrompt); // Reset to initial constant
+    setUserPromptInstructions(var_userPromptInstructions); // Reset to initial constant
+    setIsEdited(false); // After reset, it's no longer "edited" from the default
     setShowResetConfirm(false);
   };
 
@@ -265,6 +271,7 @@ const SettingsModal = ({
             <div>
               {isEdited && (
                 <span className="text-sm text-blue-600 flex items-center">
+                  {/* ... (unsaved changes icon and text) ... */}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-4 w-4 mr-1"
@@ -286,6 +293,7 @@ const SettingsModal = ({
             <div className="flex space-x-3">
               {showResetConfirm ? (
                 <>
+                  {/* ... (reset confirmation content) ... */}
                   <motion.span
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -311,7 +319,9 @@ const SettingsModal = ({
                   <button
                     className="px-3 py-1 border border-gray-300 text-gray-600 text-sm font-medium rounded hover:bg-gray-50 transition-colors"
                     onClick={() => setShowResetConfirm(true)}
-                    disabled={!isEdited}
+                    // --- MODIFIED DISABLED LOGIC ---
+                    disabled={isAtInitialDefault} // Disable only if already at the initial default state
+                    // --- END MODIFIED ---
                   >
                     Reset to Default
                   </button>
