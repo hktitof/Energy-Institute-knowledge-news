@@ -14,6 +14,8 @@ import LeftSidebar from "@/components/LeftSidebar";
 import CategoryComponent from "../components/CategoryComponent";
 import { NewsAggregatorProps } from "../utils/utils";
 
+import { default_single_article_systemPrompt, default_single_article_userPromptInstructions } from "../utils/utils";
+
 const BASE_TITLE = "Knowledge Note"; // Define base title
 
 export default function NewsAggregator({ isTestMode = false }: NewsAggregatorProps): ReactElement {
@@ -32,6 +34,12 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
     error: hasErrorCategories,
     updateCategories,
   } = useCategories({ isTestMode });
+
+  // declare article user prompt and system prompt
+
+  const [articleUserPrompt, setArticleUserPrompt] = useState(default_single_article_systemPrompt);
+
+  const [articleSystemPrompt, setArticleSystemPrompt] = useState(default_single_article_userPromptInstructions);
 
   const { loadingSearchTermId, removeSearchTerm } = useSearchTerms(categories, setCategories);
 
@@ -152,6 +160,10 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
             selectedCategoryName={selectedCategoryName || ""}
             categories={categories}
             updateCategories={updateCategories}
+            articleUserPrompt={articleUserPrompt}
+            setArticleUserPrompt={setArticleUserPrompt}
+            articleSystemPrompt={articleSystemPrompt}
+            setArticleSystemPrompt={setArticleSystemPrompt}
           />
 
           {/* Articles Tables */}
