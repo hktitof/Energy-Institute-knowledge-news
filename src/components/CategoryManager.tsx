@@ -8,6 +8,7 @@ import CategoryLinksManager from "./CategoryLinksManager";
 
 import ArticleSummarizerTab from "./ArticleSummarizerTab";
 import KnowledgeNoteGenerator from "./NoteGenerator";
+import SettingsModal from "./SettingsModal";
 export default function CategoryManager({
   newCategoryName,
   setNewCategoryName,
@@ -208,6 +209,33 @@ export default function CategoryManager({
             Note Generator
           </a>
 
+          <a
+            onClick={() => toggleTab("settings")}
+            className={`group flex items-center whitespace-nowrap py-3 px-5 border-b-2 ${
+              activeTab === "generator"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent hover:border-indigo-400 text-gray-600 hover:text-indigo-600"
+            } font-medium transition-colors cursor-pointer`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 mr-2 ${
+                activeTab === "generator" ? "text-indigo-500" : "text-gray-400 group-hover:text-indigo-500"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+              />
+            </svg>
+            Settings
+          </a>
+
           {!(activeTab === null) && (
             <a
               onClick={() => setActiveTab(null)}
@@ -289,6 +317,18 @@ export default function CategoryManager({
           />
         </div>
       )}
+      {/* Settings Modal Overlay */}
+      {/* Settings Modal Overlay */}
+      {activeTab === "settings" && (
+        <SettingsModal
+          setActiveTab={setActiveTab}
+          onSavePrompts={prompts => {
+            // Handle saving prompts here
+            console.log("Saving prompts:", prompts);
+          }}
+        />
+      )}
+
       {activeTab === "template" && (
         <ArticleSummarizerTab setActiveParentTab={setActiveTab} activeParentTab={activeTab} />
       )}
