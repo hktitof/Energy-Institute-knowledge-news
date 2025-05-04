@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// --- Constants (var_systemPrompt, var_userPromptInstructions) remain the same ---
 const var_systemPrompt =
   "You are an expert at analyzing web content and creating summaries of articles, blog posts, and informative content. You can identify whether content is an article worthy of summarization or not. You're designed to be inclusive and summarize a wide range of content formats, including technical descriptions, project overviews, and news articles, even if they have unconventional structures";
 
@@ -41,6 +42,7 @@ For non-summarizable content, use:
 
 IMPORTANT: Be inclusive in what you consider summarizable. Technical descriptions, project information, research findings, and product details ARE summarizable even if they don't follow traditional article formats.`;
 
+
 const SettingsModal = ({
   setActiveTab,
   defaultSystemPrompt = var_systemPrompt,
@@ -52,7 +54,6 @@ const SettingsModal = ({
   defaultUserPromptInstructions?: string;
   onSavePrompts: (prompts: { systemPrompt: string; userPromptInstructions: string }) => void;
 }) => {
-  // State for prompt management
   const [activeSettingsTab, setActiveSettingsTab] = useState("article-summary");
   const [systemPrompt, setSystemPrompt] = useState(defaultSystemPrompt || var_systemPrompt);
   const [userPromptInstructions, setUserPromptInstructions] = useState(
@@ -61,13 +62,14 @@ const SettingsModal = ({
   const [isEdited, setIsEdited] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+  // ### Modified from HERE !! ###
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false); // State for save confirmation
+  // ### END OF MODIFICATION !!! ###
+
   const isAtInitialDefault = systemPrompt === var_systemPrompt && userPromptInstructions === var_userPromptInstructions;
 
-  // Update state when props change (can potentially be removed if parent never passes props)
+  // Remove effect if parent never passes these props
   useEffect(() => {
-    // This effect might be causing confusion if props *were* ever passed.
-    // If the parent *never* passes these props, you can remove this useEffect.
-    // For now, let's assume it might be needed later.
     if (defaultSystemPrompt) setSystemPrompt(defaultSystemPrompt);
     if (defaultUserPromptInstructions) setUserPromptInstructions(defaultUserPromptInstructions);
   }, [defaultSystemPrompt, defaultUserPromptInstructions]);
@@ -78,16 +80,26 @@ const SettingsModal = ({
       systemPrompt,
       userPromptInstructions,
     });
-    setIsEdited(false); // Correct: Mark as not edited relative to the *saved* state
+    setIsEdited(false);
+
+    // ### Modified from HERE !! ###
+    setShowSaveSuccess(true); // Show confirmation
+    // Hide confirmation after a delay
+    setTimeout(() => {
+      setShowSaveSuccess(false);
+    }, 2500); // Hide after 2.5 seconds
+    // ### END OF MODIFICATION !!! ###
   };
 
   const handleReset = () => {
-    console.log("Resetting system prompt to:", var_systemPrompt); // Use constant directly for clarity
-    console.log("Resetting user instructions to:", var_userPromptInstructions); // Use constant directly for clarity
-    setSystemPrompt(var_systemPrompt); // Reset to initial constant
-    setUserPromptInstructions(var_userPromptInstructions); // Reset to initial constant
-    setIsEdited(false); // After reset, it's no longer "edited" from the default
+    setSystemPrompt(var_systemPrompt);
+    setUserPromptInstructions(var_userPromptInstructions);
+    setIsEdited(false);
     setShowResetConfirm(false);
+
+    // ### Modified from HERE !! ###
+    setShowSaveSuccess(false); // Ensure save confirmation is hidden on reset
+    // ### END OF MODIFICATION !!! ###
   };
 
   return (
@@ -111,7 +123,8 @@ const SettingsModal = ({
         >
           {/* Modal Header */}
           <div className="p-6 pb-0">
-            <div className="flex justify-between items-center mb-2">
+             {/* ... header content (title, close button, tabs) ... */ }
+                <div className="flex justify-between items-center mb-2">
               <h2 className="text-2xl font-semibold text-gray-800">Settings</h2>
               <button
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -157,9 +170,9 @@ const SettingsModal = ({
             </div>
           </div>
 
-          {/* Modal Content Area with scrollable content */}
+          {/* Modal Content Area */}
           <div className="flex-1 overflow-y-auto p-6 pt-4">
-            <AnimatePresence mode="wait">
+                 <AnimatePresence mode="wait">
               {activeSettingsTab === "article-summary" && (
                 <motion.div
                   key="article-summary"
@@ -173,16 +186,17 @@ const SettingsModal = ({
                     <h3 className="text-blue-700 text-sm font-medium mb-2">What are these prompts?</h3>
                     <p className="text-blue-600 text-sm">
                       These prompts control how the AI interprets and summarizes article content. The system prompt
-                      defines the AI&apos;s capabilities, while the user instructions provide specific guidance for the
+                      defines the AI's capabilities, while the user instructions provide specific guidance for the
                       summarization task.
                     </p>
                   </div>
 
                   {/* System Prompt */}
                   <div>
-                    <div className="flex justify-between items-center mb-2">
+                     {/* ... label and character count ... */ }
+                     <div className="flex justify-between items-center mb-2">
                       <label htmlFor="systemPrompt" className="block text-sm font-medium text-gray-700">
-                        System Prompt <span className="text-gray-500">(AI&apos;s Base Capability)</span>
+                        System Prompt <span className="text-gray-500">(AI's Base Capability)</span>
                       </label>
                       <span className="text-xs text-gray-500">{systemPrompt.length} characters</span>
                     </div>
@@ -194,16 +208,21 @@ const SettingsModal = ({
                       onChange={e => {
                         setSystemPrompt(e.target.value);
                         setIsEdited(true);
+                        // ### Modified from HERE !! ###
+                        setShowSaveSuccess(false); // Hide success msg if user edits again
+                        // ### END OF MODIFICATION !!! ###
                       }}
                       placeholder="Define the AI's role and capabilities here..."
                     />
-                    <p className="mt-1 text-xs text-gray-500">
+                     {/* ... helper text ... */ }
+                     <p className="mt-1 text-xs text-gray-500">
                       This defines what the AI understands about its role and capabilities.
                     </p>
                   </div>
 
                   {/* User Instructions */}
                   <div>
+                     {/* ... label and character count ... */ }
                     <div className="flex justify-between items-center mb-2">
                       <label htmlFor="userPromptInstructions" className="block text-sm font-medium text-gray-700">
                         User Instructions <span className="text-gray-500">(Task-Specific Guidelines)</span>
@@ -218,9 +237,13 @@ const SettingsModal = ({
                       onChange={e => {
                         setUserPromptInstructions(e.target.value);
                         setIsEdited(true);
+                        // ### Modified from HERE !! ###
+                        setShowSaveSuccess(false); // Hide success msg if user edits again
+                        // ### END OF MODIFICATION !!! ###
                       }}
                       placeholder="Provide specific instructions for the article summarization task..."
                     />
+                     {/* ... helper text ... */ }
                     <p className="mt-1 text-xs text-gray-500">
                       Special variables like <code className="bg-gray-100 px-1 rounded">${`{title}`}</code> and{" "}
                       <code className="bg-gray-100 px-1 rounded">${`{textContent}`}</code> will be replaced with actual
@@ -230,7 +253,8 @@ const SettingsModal = ({
 
                   {/* Template Variables Helper */}
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-gray-700 text-sm font-medium mb-2">Available Template Variables</h3>
+                    {/* ... variables list ... */ }
+                     <h3 className="text-gray-700 text-sm font-medium mb-2">Available Template Variables</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       <div className="flex items-center">
                         <code className="bg-gray-200 px-2 py-1 rounded text-sm">${`{title}`}</code>
@@ -250,51 +274,57 @@ const SettingsModal = ({
               )}
 
               {activeSettingsTab === "tab2" && (
-                <motion.div
-                  key="tab2"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-                    <h3 className="text-lg font-medium text-gray-700 mb-2">Tab 2 Content</h3>
-                    <p className="text-gray-500">Additional settings will be available here.</p>
-                  </div>
-                </motion.div>
+                 <motion.div /* ... Tab 2 content ... */ >
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                        <h3 className="text-lg font-medium text-gray-700 mb-2">Tab 2 Content</h3>
+                        <p className="text-gray-500">Additional settings will be available here.</p>
+                    </div>
+                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Modal Footer with Action Buttons */}
+          {/* Modal Footer */}
           <div className="border-t border-gray-200 p-4 bg-gray-50 flex justify-between items-center">
-            <div>
-              {isEdited && (
-                <span className="text-sm text-blue-600 flex items-center">
-                  {/* ... (unsaved changes icon and text) ... */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+
+            {/* ### Modified from HERE !! ### */}
+            {/* Left side: Status Indicators */}
+            <div className="flex items-center h-5"> {/* Container to prevent layout shift */}
+              <AnimatePresence>
+                {isEdited && !showSaveSuccess && ( // Show only if edited and save not just clicked
+                  <motion.span
+                    key="unsaved"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-sm text-blue-600 flex items-center"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                    />
-                  </svg>
-                  Unsaved changes
-                </span>
-              )}
+                     <svg /* ... edit icon ... */ xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                     Unsaved changes
+                  </motion.span>
+                )}
+                {showSaveSuccess && (
+                  <motion.span
+                    key="saved"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-sm text-green-600 flex items-center"
+                  >
+                     <svg /* ... check icon ... */ xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                     Saved successfully!
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </div>
+            {/* ### END OF MODIFICATION !!! ### */}
+
+
+            {/* Right side: Action Buttons */}
             <div className="flex space-x-3">
               {showResetConfirm ? (
-                <>
-                  {/* ... (reset confirmation content) ... */}
-                  <motion.span
+                <> {/* Reset Confirmation Buttons */}
+                   <motion.span
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className="text-sm text-red-600 mr-2 flex items-center"
@@ -315,25 +345,42 @@ const SettingsModal = ({
                   </button>
                 </>
               ) : (
-                <>
-                  <button
-                    className="px-3 py-1 border border-gray-300 text-gray-600 text-sm font-medium rounded hover:bg-gray-50 transition-colors"
+                <> {/* Default Action Buttons */}
+                  {/* Reset Button */}
+                   <button
+                    className={`px-3 py-1 border border-gray-300 text-gray-600 text-sm font-medium rounded hover:bg-gray-50 transition-colors ${
+                      isAtInitialDefault ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     onClick={() => setShowResetConfirm(true)}
-                    // --- MODIFIED DISABLED LOGIC ---
-                    disabled={isAtInitialDefault} // Disable only if already at the initial default state
-                    // --- END MODIFIED ---
+                    disabled={isAtInitialDefault}
                   >
                     Reset to Default
                   </button>
-                  <button
-                    className={`px-4 py-1 text-white text-sm font-medium rounded transition-colors ${
-                      isEdited ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-400 cursor-not-allowed"
-                    }`}
-                    onClick={handleSave}
-                    disabled={!isEdited}
-                  >
-                    Save Changes
-                  </button>
+
+                  {/* ### Modified from HERE !! ### */}
+                  {/* Save Button with Tooltip Wrapper */}
+                  <div className="relative group">
+                    <button
+                      className={`px-4 py-1 text-white text-sm font-medium rounded transition-colors ${
+                        isEdited
+                          ? "bg-blue-600 hover:bg-blue-700"
+                          : "bg-blue-400 cursor-not-allowed" // Keep visual cue for disabled
+                      }`}
+                      onClick={handleSave}
+                      disabled={!isEdited}
+                    >
+                      Save Changes
+                    </button>
+                    {/* Tooltip shown only when button is disabled */}
+                    {!isEdited && !showSaveSuccess && ( // Also hide tooltip immediately after saving
+                      <span
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 pointer-events-none whitespace-nowrap"
+                      >
+                        No changes to save
+                      </span>
+                    )}
+                  </div>
+                  {/* ### END OF MODIFICATION !!! ### */}
                 </>
               )}
             </div>
