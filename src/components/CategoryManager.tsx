@@ -18,10 +18,6 @@ export default function CategoryManager({
   setActiveTab,
   selectedCategoryName,
   updateCategories,
-  articleUserPrompt,
-  setArticleUserPrompt,
-  setArticleSystemPrompt,
-  articleSystemPrompt,
 }: {
   newCategoryName: string;
   setNewCategoryName: (name: string) => void;
@@ -32,10 +28,6 @@ export default function CategoryManager({
   setActiveTab: (tab: string | null) => void;
   selectedCategoryName: string;
   updateCategories: () => Promise<void>;
-  articleUserPrompt: string;
-  setArticleUserPrompt: React.Dispatch<React.SetStateAction<string>>;
-  setArticleSystemPrompt: React.Dispatch<React.SetStateAction<string>>;
-  articleSystemPrompt: string;
 }) {
   // this will be used to track if the user is adding a new category and show a loading spinner
   const [adding, setAdding] = useState(false);
