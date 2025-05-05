@@ -90,7 +90,7 @@ export default function ArticleSummaryPromptTab() {
   return (
     <div className="relative flex flex-col h-full">
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 pt-4 pb-24">
+      <div className="flex-1 overflow-y-auto px-6 pt-4 pb-20">
         <AnimatePresence mode="wait">
           <motion.div
             key="article-summary"
@@ -245,7 +245,7 @@ export default function ArticleSummaryPromptTab() {
       </div>
 
       {/* Sticky Footer with buttons */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-md">
+      <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-md z-10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
           {/* Left side: Status Indicators */}
           <div className="flex items-center h-5">
