@@ -32,7 +32,8 @@ interface UsePromptsResult {
   fetchError: string | null;
   updateError: string | null;
   isUpdateSuccess: boolean;
-  savePrompts: () => Promise<void>; // Function to trigger the update
+  // Modify savePrompts signature to accept optional overrides
+  savePrompts: (promptsToSave?: { systemPrompt: string; userPrompt: string }) => Promise<void>;
   resetUpdateStatus: () => void; // Function to manually reset success/error status
 }
 
@@ -81,46 +82,65 @@ export const usePrompts = (purpose: PromptPurpose): UsePromptsResult => {
   }, [fetchUrl, purpose]); // Re-fetch if purpose changes (though unlikely in your current setup)
 
   // --- Updating Logic ---
-  const savePrompts = useCallback(async () => {
-    if (!updateUrl) {
-      setUpdateError(`No update endpoint configured for purpose: ${purpose}`);
-      return;
-    }
-    if (systemPrompt === null || userPrompt === null) {
-      setUpdateError("Cannot save null prompts.");
-      return;
-    }
-
-    setIsUpdating(true);
-    setUpdateError(null);
-    setIsUpdateSuccess(false); // Reset success flag on new attempt
-
-    try {
-      const response = await fetch(updateUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ systemPrompt, userPrompt }), // Send current state
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to update prompts (${response.status})`);
+  // ### Modified from here !!! ###
+  const savePrompts = useCallback(
+    async (
+      promptsToSave?: { systemPrompt: string; userPrompt: string } // Accept optional argument
+    ) => {
+      if (!updateUrl) {
+        setUpdateError(`No update endpoint configured for purpose: ${purpose}`);
+        return;
       }
 
-      // Successfully updated
-      setIsUpdateSuccess(true);
-      // Optional: Automatically reset success message after a delay
-      // setTimeout(() => setIsUpdateSuccess(false), 3000); // Reset after 3 seconds
-    } catch (error) {
-      console.error(`Error updating prompts for ${purpose}:`, error);
-      setUpdateError(error instanceof Error ? error.message : "An unknown update error occurred");
+      // Determine which prompts to send
+      const systemToSend = promptsToSave?.systemPrompt ?? systemPrompt;
+      const userToSend = promptsToSave?.userPrompt ?? userPrompt;
+
+      if (systemToSend === null || userToSend === null) {
+        setUpdateError("Cannot save null prompts.");
+        setIsUpdating(false); // Ensure updating state is reset
+        return;
+      }
+
+      setIsUpdating(true);
+      setUpdateError(null);
       setIsUpdateSuccess(false);
-    } finally {
-      setIsUpdating(false);
-    }
-  }, [updateUrl, purpose, systemPrompt, userPrompt]); // Dependencies for the update function
+
+      try {
+        const response = await fetch(updateUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          // Send the determined values
+          body: JSON.stringify({ systemPrompt: systemToSend, userPrompt: userToSend }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to update prompts (${response.status})`);
+        }
+
+        // If save was successful, update the hook's state to match what was saved
+        // This is important if promptsToSave was provided (like during reset)
+        // This ensures the hook's state reflects the persisted reality.
+        setSystemPrompt(systemToSend);
+        setUserPrompt(userToSend);
+        setIsUpdateSuccess(true);
+      } catch (error) {
+        console.error(`Error updating prompts for ${purpose}:`, error);
+        setUpdateError(error instanceof Error ? error.message : "An unknown update error occurred");
+        setIsUpdateSuccess(false);
+      } finally {
+        setIsUpdating(false);
+      }
+      // Remove systemPrompt and userPrompt from dependencies here.
+      // The function now relies on passed args or the state at execution time,
+      // but doesn't need to be recreated *because* the state values change.
+    },
+    [updateUrl, purpose, systemPrompt, userPrompt]
+  );
+  // ### End of change here ###
 
   // --- Function to reset status ---
   const resetUpdateStatus = useCallback(() => {

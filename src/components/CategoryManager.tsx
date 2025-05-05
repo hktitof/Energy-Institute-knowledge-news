@@ -244,7 +244,7 @@ export default function CategoryManager({
             Settings
           </a>
 
-          {!(activeTab === null) && (activeTab !== "settings") && (
+          {!(activeTab === null) && activeTab !== "settings" && (
             <a
               onClick={() => setActiveTab(null)}
               className="group flex items-center whitespace-nowrap py-3 px-5 border-b-2 border-transparent hover:border-gray-300 font-medium text-gray-500 hover:text-gray-700 transition-colors cursor-pointer ml-auto"
@@ -327,22 +327,7 @@ export default function CategoryManager({
       )}
       {/* Settings Modal Overlay */}
       {/* Settings Modal Overlay */}
-      {activeTab === "settings" && (
-        <SettingsModal
-          articleUserPrompt={articleUserPrompt}
-          setArticleUserPrompt={setArticleUserPrompt}
-          setArticleSystemPrompt={setArticleSystemPrompt}
-          articleSystemPrompt={articleSystemPrompt}
-          setActiveTab={setActiveTab}
-          onSavePrompts={(systemPrompt, userPrompt) => {
-            // Handle saving prompts here
-            console.log("Passed System Prompt:", systemPrompt);
-            console.log("Passed User Prompt:", userPrompt);
-            setArticleSystemPrompt(systemPrompt);
-            setArticleUserPrompt(userPrompt);
-          }}
-        />
-      )}
+      {activeTab === "settings" && <SettingsModal setActiveTab={setActiveTab} />}
 
       {activeTab === "template" && (
         <ArticleSummarizerTab setActiveParentTab={setActiveTab} activeParentTab={activeTab} />
