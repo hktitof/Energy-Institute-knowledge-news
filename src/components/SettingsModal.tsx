@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ArticleSummaryPromptTab from "./ArticleSummaryPromptTab";
+import PromptEditorTab from "./PromptEditorTab";
+import {
+  default_single_article_systemPrompt,
+  default_single_article_userPromptInstructions,
+  default_summary_of_summary_systemPrompt,
+  default_summary_of_summary_userPromptInstructions,
+  summaryOfSummariesTemplateVariables,
+  singleArticleTemplateVariables,
+} from "../utils/utils";
 
 const SettingsModal = ({ setActiveTab }: { setActiveTab: (tab: string | null) => void }) => {
   const [activeSettingsTab, setActiveSettingsTab] = useState("article-summary");
@@ -57,17 +65,17 @@ const SettingsModal = ({ setActiveTab }: { setActiveTab: (tab: string | null) =>
                 }`}
                 onClick={() => setActiveSettingsTab("article-summary")}
               >
-                Single Article Summary Prompt
+                Single Article Summary
               </button>
               <button
                 className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
-                  activeSettingsTab === "tab2"
+                  activeSettingsTab === "summary-of-summaries"
                     ? "bg-blue-50 text-blue-600 border-b-2 border-blue-500"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
-                onClick={() => setActiveSettingsTab("tab2")}
+                onClick={() => setActiveSettingsTab("summary-of-summaries")}
               >
-                Tab 2
+                Summary of Summaries
               </button>
             </div>
           </div>
@@ -75,22 +83,28 @@ const SettingsModal = ({ setActiveTab }: { setActiveTab: (tab: string | null) =>
           {/* Modal Content Area */}
           <div className="flex-1 overflow-y-auto">
             <AnimatePresence mode="wait">
-              {activeSettingsTab === "article-summary" && <ArticleSummaryPromptTab key="article-summary" />}
+              {activeSettingsTab === "article-summary" && (
+                <PromptEditorTab
+                  key="article-summary"
+                  purpose="article_summary"
+                  title="AI Article Summarization Configuration"
+                  description="These prompts control how the AI interprets and summarizes articles. Customize both the system prompt (AI's capabilities) and user instructions (specific summarization guidance) to achieve your desired summary style and format."
+                  defaultSystemPrompt={default_single_article_systemPrompt}
+                  defaultUserPrompt={default_single_article_userPromptInstructions}
+                  templateVariables={singleArticleTemplateVariables}
+                />
+              )}
 
-              {activeSettingsTab === "tab2" && (
-                <motion.div
-                  key="tab2"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="p-6"
-                >
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-                    <h3 className="text-lg font-medium text-gray-700 mb-2">Tab 2 Content</h3>
-                    <p className="text-gray-500">Additional settings will be available here.</p>
-                  </div>
-                </motion.div>
+              {activeSettingsTab === "summary-of-summaries" && (
+                <PromptEditorTab
+                  key="summary-of-summaries"
+                  purpose="summary_of_summary"
+                  title="AI Summary Synthesis Configuration"
+                  description="These prompts control how the AI synthesizes multiple article summaries into a cohesive overview. Customize both the system prompt (AI's capabilities) and user instructions (specific synthesis guidance) to achieve your desired meta-summary style and format."
+                  defaultSystemPrompt={default_summary_of_summary_systemPrompt}
+                  defaultUserPrompt={default_summary_of_summary_userPromptInstructions}
+                  templateVariables={summaryOfSummariesTemplateVariables}
+                />
               )}
             </AnimatePresence>
           </div>

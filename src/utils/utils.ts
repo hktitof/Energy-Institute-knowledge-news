@@ -155,42 +155,19 @@ For non-summarizable content, use:
 IMPORTANT: Be inclusive in what you consider summarizable. Technical descriptions, project information, research findings, and product details ARE summarizable even if they don't follow traditional article formats.`;
 
 // --- Constants (var_systemPrompt, var_userPromptInstructions) remain the same ---
-export const default_summary_of_summary_systemPrompt =
-  "You are an expert at analyzing web content and creating summaries of articles, blog posts, and informative content. You can identify whether content is an article worthy of summarization or not. You're designed to be inclusive and summarize a wide range of content formats, including technical descriptions, project overviews, and news articles, even if they have unconventional structures";
+export const default_summary_of_summary_systemPrompt = "You are an AI assistant specialized in summarizing articles.";
 
-export const default_summary_of_summary_userPromptInstructions = `I need you to analyze the following web content and determine if it's a summarizable article, news post, project description, or other informative content.
+export const default_summary_of_summary_userPromptInstructions = `Create a single, concise summary of these {categoryName} articles in exactly {maxWords} words. Focus on the most important points. Return ONLY the summary text without any formatting or prefixes.`;
 
-Title extracted from the page: ${"{title}"}
+// Template variable definitions for the UI
+export const singleArticleTemplateVariables = [
+  { name: "title", description: "Article title" },
+  { name: "textContent", description: "Full article text" },
+  { name: "maxWords", description: "Max summary words" },
+];
 
-Content extracted from the page:
----
-${"{textContent}"}
----
-
-First, determine if this is SUMMARIZABLE CONTENT. Content is summarizable if it:
-1. Contains informative, factual, or news-related information
-2. Has a coherent narrative or structure
-3. Provides details about events, projects, research, products, etc.
-4. Is NOT primarily navigation menus, sparse listings, or computer-generated code
-
-Even if the content has an unconventional structure or is presented as a project overview, product description, or technical information, it can still be summarizable if it communicates meaningful information.
-
-If the content IS summarizable, create a concise summary (maximum ${"{maxWords}"} words) capturing the key information.
-
-If the content is NOT summarizable (meaning it's just navigation elements, random text snippets without context, or computer code), indicate this in your response.
-
-Return your analysis as a JSON object with this format:
-{
-  "is_summarizable": true/false,
-  "title": "The original title or improved version if needed",
-  "summary": "Your concise summary of the content"
-}
-
-For non-summarizable content, use:
-{
-  "is_summarizable": false,
-  "title": "NOT AN ARTICLE",
-  "summary": "Content does not appear to be a summarizable article."
-}
-
-IMPORTANT: Be inclusive in what you consider summarizable. Technical descriptions, project information, research findings, and product details ARE summarizable even if they don't follow traditional article formats.`;
+export const summaryOfSummariesTemplateVariables = [
+  { name: "articleCount", description: "Number of article summaries" },
+  { name: "summariesContent", description: "All article summaries content" },
+  { name: "maxWords", description: "Max synthesis words" },
+];

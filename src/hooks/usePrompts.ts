@@ -22,7 +22,7 @@ const getEndpoints = (purpose: PromptPurpose) => {
   }
 };
 
-interface UsePromptsResult {
+export interface UsePromptsResult {
   systemPrompt: string | null;
   userPrompt: string | null;
   setSystemPrompt: React.Dispatch<React.SetStateAction<string | null>>; // Allow local edits
