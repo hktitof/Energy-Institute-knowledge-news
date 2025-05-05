@@ -1,6 +1,15 @@
 import axios from "axios";
 
 // types
+
+// types.ts (or at top of hook file)
+export type PromptPurpose = "article_summary" | "summary_of_summary";
+
+export interface PromptData {
+  systemPrompt: string;
+  userPrompt: string;
+}
+
 export interface Link {
   id: number;
   url: string;

@@ -1,12 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { default_single_article_systemPrompt, default_single_article_userPromptInstructions } from "../utils/utils";
 
 const SettingsModal = ({
   setActiveTab,
-  defaultSystemPrompt = default_single_article_systemPrompt,
-  defaultUserPromptInstructions = default_single_article_userPromptInstructions,
   onSavePrompts,
   articleUserPrompt,
   setArticleUserPrompt,
@@ -20,10 +18,10 @@ const SettingsModal = ({
   setActiveTab: (tab: string | null) => void;
   defaultSystemPrompt?: string;
   defaultUserPromptInstructions?: string;
-  onSavePrompts: (prompts: { articleSystemPrompt: string; articleUserPrompt: string }) => void;
+  onSavePrompts: (systemPrompt: string, userPrompt: string) => void;
 }) => {
   const [activeSettingsTab, setActiveSettingsTab] = useState("article-summary");
- 
+
   const [isEdited, setIsEdited] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -32,20 +30,12 @@ const SettingsModal = ({
   // ### END OF MODIFICATION !!! ###
 
   const isAtInitialDefault =
-    articleSystemPrompt === default_single_article_systemPrompt && articleUserPrompt === default_single_article_userPromptInstructions;
-
-  // Remove effect if parent never passes these props
-  useEffect(() => {
-    if (defaultSystemPrompt) setArticleSystemPrompt(defaultSystemPrompt);
-    if (defaultUserPromptInstructions) setArticleUserPrompt(defaultUserPromptInstructions);
-  }, [defaultSystemPrompt, defaultUserPromptInstructions]);
+    articleSystemPrompt === default_single_article_systemPrompt &&
+    articleUserPrompt === default_single_article_userPromptInstructions;
 
   // Handle save
   const handleSave = () => {
-    onSavePrompts({
-      articleSystemPrompt,
-      articleUserPrompt,
-    });
+    onSavePrompts(articleSystemPrompt, articleUserPrompt);
     setIsEdited(false);
 
     // ### Modified from HERE !! ###
