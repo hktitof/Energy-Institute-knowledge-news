@@ -16,7 +16,7 @@ import { NewsAggregatorProps } from "../utils/utils";
 
 const BASE_TITLE = "Knowledge Note"; // Define base title
 
-export default function NewsAggregator({ isTestMode = false }: NewsAggregatorProps): ReactElement {
+export default function NewsAggregator({ isTestMode = true }: NewsAggregatorProps): ReactElement {
   // Use our custom hooks to handle different concerns
   const {
     categories,

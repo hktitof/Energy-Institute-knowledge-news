@@ -31,11 +31,11 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { 
-    categoryName = "", 
-    articles, 
+  const {
+    categoryName = "",
+    articles,
     maxWords = 50,
-    customPrompt = "Create a single, concise summary of these {categoryName} articles in exactly {maxWords} words. Focus on the most important points. Return ONLY the summary text without any formatting or prefixes."
+    customPrompt = "Create a single, concise summary of these {categoryName} articles in exactly {maxWords} words. Focus on the most important points. Return ONLY the summary text without any formatting or prefixes.",
   }: RequestBody = req.body;
 
   if (!articles || !Array.isArray(articles) || articles.length === 0) {
@@ -84,11 +84,18 @@ export default async function handler(
         body: JSON.stringify({
           messages: [
             {
+              role: "system",
+              // General instructions, maybe parts extracted from customPrompt if desired
+              // Or keep it simpler:
+              content: "You are an AI assistant specialized in summarizing articles.",
+            },
+            {
               role: "user",
+              // Use the fully processed prompt here, along with the data
               content: `${processedPrompt}
-
-Articles:
-${articlesText}`,
+    
+    Articles:
+    ${articlesText}`,
             },
           ],
           max_tokens: 300,
@@ -110,7 +117,7 @@ ${articlesText}`,
     // Return the response in the requested JSON format
     return res.status(200).json({
       categoryName: categoryName,
-      summary: summary
+      summary: summary,
     });
   } catch (error) {
     console.error("Error processing request:", error);

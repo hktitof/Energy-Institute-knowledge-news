@@ -35,7 +35,7 @@ interface UsePromptsResult {
   // Modify savePrompts signature to accept optional overrides
   savePrompts: (promptsToSave?: { systemPrompt: string; userPrompt: string }) => Promise<void>;
   resetUpdateStatus: () => void; // Function to manually reset success/error status
-}
+} 
 
 export const usePrompts = (purpose: PromptPurpose): UsePromptsResult => {
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
