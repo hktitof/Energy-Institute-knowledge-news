@@ -1,3 +1,4 @@
+// pages/api/prompts/updateSingleArticle.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { executeQuery, connectDB } from "../../../utils/ds"; // Adjust path if needed
 
@@ -27,21 +28,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   // --- 2. Process PUT Request ---
   try {
-    const { systemPrompt, userPrompt } = req.body;
+    const { systemPrompt, userPrompt, maxWords } = req.body;
 
     // --- 3. Input Validation ---
-    if (typeof systemPrompt !== "string" || typeof userPrompt !== "string") {
-      return res
-        .status(400)
-        .json({
-          error: "Bad Request",
-          message: "Request body must include 'systemPrompt' and 'userPrompt' as strings.",
-        });
+    if (
+      typeof systemPrompt !== "string" ||
+      typeof userPrompt !== "string" ||
+      (maxWords !== undefined && typeof maxWords !== "number") // maxWords is optional but must be number if present
+    ) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Request body must include 'systemPrompt' and 'userPrompt' as strings.",
+      });
     }
     // Add any other validation needed (e.g., checking for empty strings if required)
     // if (systemPrompt.trim() === '' || userPrompt.trim() === '') {
     //    return res.status(400).json({ error: "Bad Request", message: "Prompts cannot be empty." });
     // }
+
+    const finalMaxWords = maxWords ?? 150; // Default if not provided
 
     // --- 4. Prepare for Database Update ---
     // IMPORTANT: Use Parameterized Queries if your executeQuery supports them!
@@ -54,12 +59,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // because it originates from the textarea state, and the GET API already normalized it.
     const updateSystemQuery = `
       UPDATE PromptDefinitions
-      SET prompt_text = N'${escapedSystemPrompt}'  -- Use N prefix for NVARCHAR
+      SET
+        prompt_text = N'${escapedSystemPrompt}',
+        max_words = ${finalMaxWords} -- Update max_words here
       WHERE task_purpose = 'article_summary' AND prompt_role = 'system';
     `;
     const updateUserQuery = `
       UPDATE PromptDefinitions
-      SET prompt_text = N'${escapedUserPrompt}'  -- Use N prefix for NVARCHAR
+      SET prompt_text = N'${escapedUserPrompt}'
+      -- max_words is typically not updated on the 'user' role row if associated with 'system'
       WHERE task_purpose = 'article_summary' AND prompt_role = 'user';
     `;
 
@@ -71,7 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await executeQuery(updateSystemQuery);
     await executeQuery(updateUserQuery);
 
-    // --- 7. Send Success Response ---
     return res.status(200).json({ message: "Article summary prompts updated successfully." });
   } catch (error) {
     // --- 8. Handle Errors ---

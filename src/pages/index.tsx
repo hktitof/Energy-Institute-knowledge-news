@@ -2,6 +2,7 @@
 import React, { ReactElement, useEffect, useState } from "react"; // Import useEffect
 import { fetchCategories } from "../utils/utils";
 import Head from "next/head";
+import { refreshAllPromptSettingsInLocalStorage } from "../utils/promptManager"; // Import localStorage utility function
 
 // Import our custom hooks
 import { useCategories } from "../hooks/useCategories";
@@ -53,6 +54,17 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
     activeTab,
     setActiveTab,
   } = useCategoryLinks(categories, setCategories);
+
+  useEffect(() => {
+    // Fetch and update localStorage once when the app loads
+    // This is "fire and forget" - it updates LS in the background.
+    // The usePrompts hook will then pick up this fresher LS data when it mounts.
+    refreshAllPromptSettingsInLocalStorage();
+
+    // If you want to do it on an interval (use with caution):
+    // const intervalId = setInterval(refreshAllPromptSettingsInLocalStorage, 5 * 60 * 1000); // Every 5 mins
+    // return () => clearInterval(intervalId);
+  }, []);
 
   // --- START: useState for Page Title ---
   const [pageTitle, setPageTitle] = useState(BASE_TITLE);

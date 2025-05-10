@@ -1,28 +1,39 @@
+// components/PromptEditorTab.tsx
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePrompts } from "@/hooks/usePrompts";
-import { Save, RotateCcw, AlertCircle, CheckCircle, Edit, Clock, Info, X } from "lucide-react";
-import { PromptPurpose } from "@/utils/utils";
+import { usePrompts } from "@/hooks/usePrompts"; // Adjust path if needed
+import { Save, RotateCcw, AlertCircle, CheckCircle, Edit, Clock, Info, X, Settings, HelpCircle } from "lucide-react";
+import { PromptPurpose } from "@/utils/utils"; // Adjust path if needed
+
 export default function PromptEditorTab({
   purpose,
   title,
   description,
-  defaultSystemPrompt,
-  defaultUserPrompt,
+  // These props from SettingsModal are now primarily FALLBACKS or initial display hints
+  defaultSystemPrompt: propDefaultSystemPrompt,
+  defaultUserPrompt: propDefaultUserPrompt,
+  defaultMaxWords: propDefaultMaxWords = 150, // Default for the prop itself
   templateVariables = [],
 }: {
   purpose: PromptPurpose;
   title: string;
   description: string;
-  defaultSystemPrompt: string;
-  defaultUserPrompt: string;
+  defaultSystemPrompt: string; // Prop from SettingsModal, used as fallback
+  defaultUserPrompt: string; // Prop from SettingsModal, used as fallback
+  defaultMaxWords?: number; // Prop from SettingsModal, used as fallback
   templateVariables?: Array<{ name: string; description: string }>;
 }) {
   const {
     systemPrompt,
     userPrompt,
+    maxWords,
+    // Destructure the defaults fetched from API via the hook
+    defaultSystemPromptFromApi,
+    defaultUserPromptFromApi,
+    defaultMaxWordsFromApi,
     setSystemPrompt,
     setUserPrompt,
+    setMaxWords,
     isLoadingFetch,
     isUpdating,
     fetchError,
@@ -36,9 +47,16 @@ export default function PromptEditorTab({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [showInfoTip, setShowInfoTip] = useState(true);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
-  // Determine if current state matches defaults
-  const isAtInitialDefault = systemPrompt === defaultSystemPrompt && userPrompt === defaultUserPrompt;
+  // Determine the effective defaults to compare against for 'isAtInitialDefault'
+  // Prioritize defaults from API (via hook), then fall back to props
+  const effectiveDefaultSystem = defaultSystemPromptFromApi ?? propDefaultSystemPrompt;
+  const effectiveDefaultUser = defaultUserPromptFromApi ?? propDefaultUserPrompt;
+  const effectiveDefaultMax = defaultMaxWordsFromApi ?? propDefaultMaxWords;
+
+  const isAtInitialDefault =
+    systemPrompt === effectiveDefaultSystem && userPrompt === effectiveDefaultUser && maxWords === effectiveDefaultMax;
 
   // Auto-hide info tip
   useEffect(() => {
@@ -62,16 +80,13 @@ export default function PromptEditorTab({
     }
   }, [isUpdateSuccess]);
 
-  // Handle initiating SAVE action (Normal save)
+  // Handle initiating SAVE action
   const handleSave = async () => {
-    // Prevent saving if not locally edited or already updating
     if (!isEditedLocally || isUpdating) return;
-
     resetUpdateStatus();
     setShowSaveSuccess(false);
-    // Call savePrompts WITHOUT arguments. It will use the hook's current internal state.
+    // savePrompts will use the hook's current systemPrompt, userPrompt, and maxWords
     await savePrompts();
-    // Feedback handled by useEffect watching isUpdateSuccess
   };
 
   // Handle initiating RESET action
@@ -80,24 +95,50 @@ export default function PromptEditorTab({
     resetUpdateStatus();
     setShowSaveSuccess(false);
 
-    // Call savePrompts, passing the default values DIRECTLY.
+    // Reset to the defaults fetched from the API (via hook state),
+    // or fall back to the prop-based defaults if API data isn't available.
     await savePrompts({
-      systemPrompt: defaultSystemPrompt,
-      userPrompt: defaultUserPrompt,
+      systemPrompt: defaultSystemPromptFromApi ?? propDefaultSystemPrompt,
+      userPrompt: defaultUserPromptFromApi ?? propDefaultUserPrompt,
+      maxWords: defaultMaxWordsFromApi ?? propDefaultMaxWords,
     });
   };
 
-  // Function called by textarea onChange
-  const handleTextChange = ({ setter, value }: { setter: (value: string) => void; value: string }) => {
-    setter(value); // Update the hook's state via its setter
-    setIsEditedLocally(true); // Mark local edit
+  // Generic handler for text/number input changes
+  const handleInputChange = (
+    setter: React.Dispatch<React.SetStateAction<string | null>> | React.Dispatch<React.SetStateAction<number | null>>,
+    value: string | number | null
+  ) => {
+    if (typeof value === "string") {
+      (setter as React.Dispatch<React.SetStateAction<string | null>>)(value);
+    } else {
+      // Assumes number | null
+      (setter as React.Dispatch<React.SetStateAction<number | null>>)(value);
+    }
+    setIsEditedLocally(true);
     setShowSaveSuccess(false);
     resetUpdateStatus();
   };
 
+  // Specific handler for maxWords input to include parsing and validation
+  const handleMaxWordsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    const numValue = parseInt(rawValue, 10);
+    let newValue: number | null;
+
+    if (rawValue === "") {
+      newValue = null; // Allow clearing the input
+    } else if (!isNaN(numValue)) {
+      newValue = Math.max(1, numValue); // Ensure at least 1
+    } else {
+      return; // Do not update if not a number
+    }
+    handleInputChange(setMaxWords, newValue);
+  };
+
   if (isLoadingFetch) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full min-h-[300px]">
         <div className="flex flex-col items-center">
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="mt-4 text-gray-600 font-medium">Loading prompts...</p>
@@ -108,13 +149,13 @@ export default function PromptEditorTab({
 
   if (fetchError) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-6">
+      <div className="flex flex-col items-center justify-center h-full p-6 min-h-[300px]">
         <AlertCircle size={36} className="text-red-500 mb-2" />
         <p className="text-red-600 font-medium mb-4">Error loading prompts</p>
         <p className="text-gray-600 mb-6 text-center max-w-md">{fetchError}</p>
         <button
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
-          onClick={() => window.location.reload()} // Or trigger fetch again
+          onClick={() => window.location.reload()}
         >
           Retry
         </button>
@@ -122,6 +163,7 @@ export default function PromptEditorTab({
     );
   }
 
+  // Main component JSX remains the same as you provided
   return (
     <div className="relative flex flex-col h-full bg-gray-50">
       {/* Scrollable Content Area */}
@@ -166,7 +208,7 @@ export default function PromptEditorTab({
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="systemPrompt" className="block font-medium text-gray-800">
+                  <label htmlFor={`systemPrompt-${purpose}`} className="block font-medium text-gray-800">
                     System Prompt <span className="text-gray-500 text-sm font-normal">(AI&apos;s Base Capability)</span>
                   </label>
                   <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-600">
@@ -176,11 +218,11 @@ export default function PromptEditorTab({
               </div>
               <div className="p-4">
                 <textarea
-                  id="systemPrompt"
+                  id={`systemPrompt-${purpose}`}
                   rows={5}
                   className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
-                  value={systemPrompt || ""}
-                  onChange={e => handleTextChange({ setter: setSystemPrompt, value: e.target.value })}
+                  value={systemPrompt ?? ""}
+                  onChange={e => handleInputChange(setSystemPrompt, e.target.value)}
                   placeholder="Define the AI's role and capabilities here..."
                 />
                 <p className="mt-2 text-xs text-gray-500 flex items-center">
@@ -194,7 +236,7 @@ export default function PromptEditorTab({
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="userPrompt" className="block font-medium text-gray-800">
+                  <label htmlFor={`userPrompt-${purpose}`} className="block font-medium text-gray-800">
                     User Instructions{" "}
                     <span className="text-gray-500 text-sm font-normal">(Task-Specific Guidelines)</span>
                   </label>
@@ -205,11 +247,11 @@ export default function PromptEditorTab({
               </div>
               <div className="p-4">
                 <textarea
-                  id="userPrompt"
+                  id={`userPrompt-${purpose}`}
                   rows={10}
                   className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
-                  value={userPrompt || ""}
-                  onChange={e => handleTextChange({ setter: setUserPrompt, value: e.target.value })}
+                  value={userPrompt ?? ""}
+                  onChange={e => handleInputChange(setUserPrompt, e.target.value)}
                   placeholder="Provide specific instructions for the task..."
                 />
                 <p className="mt-2 text-xs text-gray-500 flex items-center">
@@ -222,7 +264,92 @@ export default function PromptEditorTab({
               </div>
             </div>
 
-            {/* Template Variables Helper */}
+            {/* Advanced Settings Accordion */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <button
+                className="w-full flex justify-between items-center bg-gray-50 px-4 py-3 border-b-gray-200 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                aria-expanded={showAdvancedSettings}
+                style={{ borderBottomWidth: showAdvancedSettings ? 0 : "1px" }}
+              >
+                <span className="font-medium text-gray-800 flex items-center">
+                  <Settings className="h-4 w-4 mr-2 text-gray-600" />
+                  Advanced Settings
+                </span>
+                <span
+                  className={`transform transition-transform duration-200 ${showAdvancedSettings ? "rotate-180" : ""}`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </span>
+              </button>
+
+              <AnimatePresence>
+                {showAdvancedSettings && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-4 space-y-4 border-t border-gray-200">
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-start">
+                          <div className="flex-grow">
+                            <label
+                              htmlFor={`maxWords-${purpose}`}
+                              className="block text-sm font-medium text-gray-700 mb-1"
+                            >
+                              Max Summary Words
+                            </label>
+                            <input
+                              type="number"
+                              id={`maxWords-${purpose}`}
+                              className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
+                              value={maxWords ?? ""}
+                              onChange={handleMaxWordsChange}
+                              min="1"
+                              placeholder="e.g., 150"
+                            />
+                            <p className="mt-2 text-xs text-gray-500 flex items-center">
+                              <Info className="h-3 w-3 mr-1 flex-shrink-0" />
+                              Approximate maximum words for the generated summary.
+                            </p>
+                          </div>
+                          <div className="ml-4 flex-shrink-0">
+                            <div className="relative group">
+                              <button
+                                type="button"
+                                className="text-gray-400 hover:text-blue-600 p-1 rounded-full hover:bg-blue-50 transition-colors"
+                              >
+                                <HelpCircle className="h-5 w-5" />
+                              </button>
+                              <div className="absolute right-0 bottom-full mb-2 w-64 bg-white p-3 rounded-lg shadow-lg border border-gray-200 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity z-10 text-left">
+                                <h4 className="font-medium text-gray-800 mb-1">Word Limit Setting</h4>
+                                <p className="text-xs text-gray-600">
+                                  This controls how concise the AI&apos;s summaries will be. Lower values result in more
+                                  condensed summaries.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Template Variables Helper (Your existing JSX for this) */}
             {templateVariables.length > 0 && (
               <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 shadow-sm p-5">
                 <h3 className="text-gray-800 font-medium flex items-center mb-3">
@@ -242,9 +369,13 @@ export default function PromptEditorTab({
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {templateVariables.map((variable, index) => (
-                    <div key={index} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center">
+                    <div
+                      key={index}
+                      className="bg-white p-3 rounded-lg border border-gray-200 flex items-center"
+                    >
                       <code className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm font-mono">
-                        ${`{${variable.name}}`}
+                        {/* Corrected template variable display */}
+                        {`{{${variable.name}}}`}
                       </code>
                       <span className="ml-3 text-sm text-gray-600">{variable.description}</span>
                     </div>
@@ -256,7 +387,7 @@ export default function PromptEditorTab({
         </AnimatePresence>
       </div>
 
-      {/* Sticky Footer */}
+      {/* Sticky Footer (Your existing JSX for this) */}
       <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-md z-10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
           {/* Left side: Status Indicators */}

@@ -167,7 +167,7 @@ export const singleArticleTemplateVariables = [
 ];
 
 export const summaryOfSummariesTemplateVariables = [
-  { name: "articleCount", description: "Number of article summaries" },
+  { name: "articleCount", description: "article summaries" },
   { name: "summariesContent", description: "All article summaries content" },
   { name: "maxWords", description: "Max synthesis words" },
 ];

@@ -91,6 +91,7 @@ const SettingsModal = ({ setActiveTab }: { setActiveTab: (tab: string | null) =>
                   description="These prompts control how the AI interprets and summarizes articles. Customize both the system prompt (AI's capabilities) and user instructions (specific summarization guidance) to achieve your desired summary style and format."
                   defaultSystemPrompt={default_single_article_systemPrompt}
                   defaultUserPrompt={default_single_article_userPromptInstructions}
+                  defaultMaxWords={150} // Explicitly pass, or use a constant from utils
                   templateVariables={singleArticleTemplateVariables}
                 />
               )}
@@ -103,6 +104,7 @@ const SettingsModal = ({ setActiveTab }: { setActiveTab: (tab: string | null) =>
                   description="These prompts control how the AI synthesizes multiple article summaries into a cohesive overview. Customize both the system prompt (AI's capabilities) and user instructions (specific synthesis guidance) to achieve your desired meta-summary style and format."
                   defaultSystemPrompt={default_summary_of_summary_systemPrompt}
                   defaultUserPrompt={default_summary_of_summary_userPromptInstructions}
+                  defaultMaxWords={100} // Example different default
                   templateVariables={summaryOfSummariesTemplateVariables}
                 />
               )}
