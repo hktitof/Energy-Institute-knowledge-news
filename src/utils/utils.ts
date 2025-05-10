@@ -171,3 +171,50 @@ export const summaryOfSummariesTemplateVariables = [
   { name: "summariesContent", description: "All article summaries content" },
   { name: "maxWords", description: "Max synthesis words" },
 ];
+export const DEFAULT_ARTICLE_MAX_WORDS = 100; // Default max words for article summaries
+interface PromptSettingsFromStorage {
+  systemPrompt?: string;
+  userPrompt?: string;
+  maxWords?: number;
+  defaultSystemPrompt?: string;
+  defaultUserPrompt?: string;
+  defaultMaxWords?: number;
+}
+
+export const getArticlePromptSettings = (): { systemPrompt: string; userPrompt: string; maxWords: number } => {
+  let systemPrompt = default_single_article_systemPrompt;
+  let userPrompt = default_single_article_userPromptInstructions;
+  let maxWords = DEFAULT_ARTICLE_MAX_WORDS; // Use the imported or defined default
+
+  if (typeof window !== "undefined" && window.localStorage) {
+    const storedSettingsString = localStorage.getItem("promptSettings_article_summary");
+    if (storedSettingsString) {
+      try {
+        const parsedSettings: PromptSettingsFromStorage = JSON.parse(storedSettingsString);
+
+        // Use value from LocalStorage if present, then its own default, then the global default
+        systemPrompt =
+          parsedSettings.systemPrompt || parsedSettings.defaultSystemPrompt || default_single_article_systemPrompt;
+        userPrompt =
+          parsedSettings.userPrompt ||
+          parsedSettings.defaultUserPrompt ||
+          default_single_article_userPromptInstructions;
+        maxWords = parsedSettings.maxWords || parsedSettings.defaultMaxWords || DEFAULT_ARTICLE_MAX_WORDS;
+      } catch (error) {
+        console.error(
+          "Failed to parse 'promptSettings_article_summary' from LocalStorage. Using application defaults.",
+          error
+        );
+        // Values are already set to global defaults, so no action needed here
+      }
+    } else {
+      console.log("'promptSettings_article_summary' not found in LocalStorage. Using application defaults.");
+      // Values are already set to global defaults
+    }
+  } else {
+    console.log("LocalStorage is not available. Using application defaults.");
+    // Values are already set to global defaults
+  }
+
+  return { systemPrompt, userPrompt, maxWords };
+};
