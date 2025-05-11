@@ -73,7 +73,7 @@ const CategoryActionButtons: React.FC<CategoryActionButtonsProps> = ({
               // get custom links from category
               const customLinks = category.links.map(link => link.url.trim());
 
-              await fetchNewsForCategory(category.id, customLinks, categories);
+              await fetchNewsForCategory(category.id, customLinks, categories, );
 
               // TODO : Reset the categoriesFetching state when done, uncomment this line later
               setCategoriesFetching(null);

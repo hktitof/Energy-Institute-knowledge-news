@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-
+import useLocalStoragePrompts from "./useLocalStoragePrompts"; // Import localStorage utility function
 // import { ArticleFetchProgressProps } from "../utils/utils";
 interface CategoryStatus {
   categoryId: number;
@@ -47,6 +47,8 @@ export const useArticleFetching = (
   const [isFetchingAllNewsByButton, setIsFetchingAllNewsByButton] = useState<boolean>(false);
   const [categoriesStatus, setCategoriesStatus] = useState<CategoryStatus[]>([]);
   const refFetchNews = useRef<HTMLSpanElement>(null);
+
+  const { articlePromptSettings } = useLocalStoragePrompts();
 
   // Initialize categoriesStatus based on categories
   useEffect(() => {
@@ -99,8 +101,16 @@ export const useArticleFetching = (
     categoryId: string | number,
     customLinks: string[] = [],
     categories: Category[] = [],
-    setCategories: React.Dispatch<React.SetStateAction<Category[]>>
+    setCategories: React.Dispatch<React.SetStateAction<Category[]>>,
+    // Add parameter for prompt settings
+    promptSettings: {
+      systemPrompt: string;
+      userPrompt: string;
+      maxWords: number;
+    }
   ) => {
+    // print passed promptSettings
+    console.log("Prompt settings:", promptSettings);
     const categoryData = categories.length ? categories : categories;
     const category = categoryData.find(cat => cat.id === categoryId);
 
@@ -259,15 +269,31 @@ export const useArticleFetching = (
         );
 
         try {
+          // Modified to include prompt settings in the request
+          const fetchBody: {
+            url: string;
+            articleId: string;
+            systemPrompt?: string;
+            userPrompt?: string;
+            maxWords?: number;
+          } = {
+            url: link,
+            articleId,
+          };
+
+          // Add prompt settings if available
+          if (promptSettings) {
+            fetchBody.systemPrompt = promptSettings.systemPrompt;
+            fetchBody.userPrompt = promptSettings.userPrompt;
+            fetchBody.maxWords = promptSettings.maxWords;
+          }
+
           const articleResponse = await fetch("/api/fetch-one-article", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              url: link,
-              articleId,
-            }),
+            body: JSON.stringify(fetchBody),
           });
 
           if (!articleResponse.ok) {
@@ -451,19 +477,29 @@ export const useArticleFetching = (
           const customLinks = category.links.map(link => link.url.trim());
 
           // Use the single category fetcher for each category
-          await fetchNewsForCategory(category.id, customLinks, updatedCategories, newCategoriesOrUpdater => {
-            // Handle both direct arrays and updater functions
-            if (typeof newCategoriesOrUpdater === "function") {
-              // If it's an updater function, apply it to our current categories
-              const updaterFn = newCategoriesOrUpdater as (prev: Category[]) => Category[];
-              updatedCategories = updaterFn(updatedCategories);
-            } else {
-              // If it's a direct array, use it directly
-              updatedCategories = newCategoriesOrUpdater as Category[];
+          await fetchNewsForCategory(
+            category.id,
+            customLinks,
+            updatedCategories,
+            newCategoriesOrUpdater => {
+              // Handle both direct arrays and updater functions
+              if (typeof newCategoriesOrUpdater === "function") {
+                // If it's an updater function, apply it to our current categories
+                const updaterFn = newCategoriesOrUpdater as (prev: Category[]) => Category[];
+                updatedCategories = updaterFn(updatedCategories);
+              } else {
+                // If it's a direct array, use it directly
+                updatedCategories = newCategoriesOrUpdater as Category[];
+              }
+              // Update the state
+              setCategories([...updatedCategories]);
+            },
+            {
+              systemPrompt: articlePromptSettings?.systemPrompt || "",
+              userPrompt: articlePromptSettings?.userPrompt || "",
+              maxWords: articlePromptSettings?.maxWords || 0,
             }
-            // Update the state
-            setCategories([...updatedCategories]);
-          });
+          );
 
           // Wait briefly before moving to next category
           await new Promise(resolve => setTimeout(resolve, 1000));

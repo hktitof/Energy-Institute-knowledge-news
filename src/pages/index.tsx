@@ -3,7 +3,6 @@ import React, { ReactElement, useEffect, useState } from "react"; // Import useE
 import { fetchCategories } from "../utils/utils";
 import Head from "next/head";
 import { refreshAllPromptSettingsInLocalStorage } from "../utils/promptManager"; // Import localStorage utility function
-
 // Import our custom hooks
 import { useCategories } from "../hooks/useCategories";
 import { useSearchTerms } from "../hooks/useSearchTerms";
@@ -14,6 +13,7 @@ import CategoryManager from "@/components/CategoryManager";
 import LeftSidebar from "@/components/LeftSidebar";
 import CategoryComponent from "../components/CategoryComponent";
 import { NewsAggregatorProps } from "../utils/utils";
+import useLocalStoragePrompts from "@/hooks/useLocalStoragePrompts"; // Import localStorage hook
 
 const BASE_TITLE = "Knowledge Note"; // Define base title
 
@@ -45,6 +45,8 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
     fetchNewsForCategory,
     fetchAllNews,
   } = useArticleFetching(categories, setCategories);
+
+  const { articlePromptSettings } = useLocalStoragePrompts();
 
   const {
     // selectedCategoryId,
@@ -121,8 +123,9 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
         <link rel="icon" href="/favicon-16x16.png" />
         <meta name="description" content="News aggregator application" />
       </Head>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50 flex-col">
         {/* Left sidebar with categories */}
+       
         <LeftSidebar
           categories={categories}
           setCategories={setCategories}
@@ -140,7 +143,13 @@ export default function NewsAggregator({ isTestMode = false }: NewsAggregatorPro
           categoriesStatus={categoriesStatus}
           refFetchNews={refFetchNews}
           fetchNewsForCategory={(categoryId, customLinks, categories) => {
-            fetchNewsForCategory(categoryId, customLinks, categories, setCategories);
+            fetchNewsForCategory(
+              categoryId,
+              customLinks,
+              categories,
+              setCategories,
+              articlePromptSettings ? articlePromptSettings : { systemPrompt: "", userPrompt: "", maxWords: 0 }
+            );
             return Promise.resolve();
           }}
           fetchAllNews={fetchAllNews}

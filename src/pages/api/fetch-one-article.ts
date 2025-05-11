@@ -18,9 +18,23 @@ interface CustomError extends Error {
   code?: string;
 }
 
+// Add interface for the expected request body
+interface ArticleRequestBody {
+  url: string;
+  articleId: string;
+  systemPrompt?: string;
+  userPrompt?: string;
+  maxWords?: number;
+}
+
 const isDevelopment = process.env.NODE_ENV !== "production";
 
-async function extractAndSummarize(url: string, maxWords: number = 100): Promise<{ title: string; summary: string }> {
+async function extractAndSummarize(
+  url: string,
+  systemPrompt?: string,
+  userPrompt?: string,
+  maxWords: number = 100
+): Promise<{ title: string; summary: string }> {
   try {
     // Fetch the HTML content with retry logic
     const response = await retry(
@@ -52,9 +66,7 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
     // Extract all visible text with improved handling
     function extractAllVisibleText(doc: Document): string {
       // Remove common non-content elements that could interfere with extraction
-      const elementsToRemove = doc.querySelectorAll(
-        "script, style, noscript, svg, head, iframe"
-      );
+      const elementsToRemove = doc.querySelectorAll("script, style, noscript, svg, head, iframe");
       elementsToRemove.forEach(el => el.remove());
 
       // Improved text extraction from nodes
@@ -66,7 +78,7 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
           return "";
         }
         const element = node as Element;
-        
+
         // Basic hidden element detection
         const computedStyle = element.getAttribute("style") || "";
         const hasHiddenAttr =
@@ -74,45 +86,67 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
           element.getAttribute("aria-hidden") === "true" ||
           computedStyle.includes("display: none") ||
           computedStyle.includes("visibility: hidden");
-          
+
         if (hasHiddenAttr) {
           return "";
         }
-        
+
         let textContent = "";
         for (let i = 0; i < node.childNodes.length; i++) {
           textContent += extractTextFromNode(node.childNodes[i]) + " ";
         }
-        
+
         // More comprehensive list of block-level elements
         const blockTags = [
-          "DIV", "P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "TD", "SECTION", "ARTICLE",
-          "BLOCKQUOTE", "BR", "HR", "UL", "OL", "DL", "PRE", "ADDRESS", "FIGURE", "FIGCAPTION",
-          "MAIN", "HEADER", "FOOTER"
+          "DIV",
+          "P",
+          "H1",
+          "H2",
+          "H3",
+          "H4",
+          "H5",
+          "H6",
+          "LI",
+          "TD",
+          "SECTION",
+          "ARTICLE",
+          "BLOCKQUOTE",
+          "BR",
+          "HR",
+          "UL",
+          "OL",
+          "DL",
+          "PRE",
+          "ADDRESS",
+          "FIGURE",
+          "FIGCAPTION",
+          "MAIN",
+          "HEADER",
+          "FOOTER",
         ];
-        
+
         if (blockTags.includes(element.tagName)) {
           return "\n" + textContent.trim() + "\n";
         }
         return textContent.trim();
       }
-      
+
       // Try to find main content area first
       let bodyText;
-      
+
       // Prioritized content selectors - try these first
       const contentSelectors = [
-        "article", 
-        ".article", 
-        ".post-content", 
-        ".article-content", 
-        "main", 
-        "[role='main']", 
+        "article",
+        ".article",
+        ".post-content",
+        ".article-content",
+        "main",
+        "[role='main']",
         ".main-content",
         "#content",
-        ".content"
+        ".content",
       ];
-      
+
       // Try each content selector
       let mainContent = null;
       for (const selector of contentSelectors) {
@@ -121,13 +155,13 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
           break;
         }
       }
-      
+
       if (mainContent && mainContent.textContent && mainContent.textContent.trim().length > 200) {
         bodyText = extractTextFromNode(mainContent);
       } else {
         bodyText = extractTextFromNode(doc.body);
       }
-      
+
       return bodyText
         .replace(/\n{3,}/g, "\n\n")
         .replace(/\s+/g, " ")
@@ -142,20 +176,20 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
 
     // Extract and clean the title with improved handling
     const rawTitle = document.title || "";
-    
+
     // Try multiple approaches for title extraction
     const titleSelectors = [
-      "h1.article-title", 
-      "h1.entry-title", 
-      "h1.headline", 
-      "h1.title", 
-      "article h1", 
+      "h1.article-title",
+      "h1.entry-title",
+      "h1.headline",
+      "h1.title",
+      "article h1",
       ".article-header h1",
       ".post-title",
       "main h1",
-      "h1"
+      "h1",
     ];
-    
+
     let mainHeading = "";
     for (const selector of titleSelectors) {
       const headingElement = document.querySelector(selector);
@@ -164,7 +198,7 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
         break;
       }
     }
-    
+
     let title = mainHeading || rawTitle;
 
     // Only remove common website suffixes if needed
@@ -189,18 +223,13 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
 
     // Extract text content
     let textContent = extractAllVisibleText(document);
-    
+
     // Pre-process text for better formatting
-    textContent = textContent
-      .replace(/\s+/g, ' ')
-      .replace(/\n+/g, '\n')
-      .trim();
-    
+    textContent = textContent.replace(/\s+/g, " ").replace(/\n+/g, "\n").trim();
+
     // Basic cleanup for poor content extraction cases
     if (textContent.length < 100 && dom.window.document.body.textContent) {
-      textContent = dom.window.document.body.textContent
-        .replace(/\s+/g, ' ')
-        .trim();
+      textContent = dom.window.document.body.textContent.replace(/\s+/g, " ").trim();
     }
 
     // Azure OpenAI API call
@@ -218,25 +247,15 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
     const maxRetries = 2;
     let delay = 5000;
 
-    while (retries <= maxRetries) {
-      try {
-        aiResponse = await fetch(
-          `${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "api-key": apiKey,
-            },
-            body: JSON.stringify({
-              messages: [
-                {
-                  role: "system",
-                  content: `You are an expert at analyzing web content and creating summaries of articles, blog posts, and informative content. You can identify whether content is an article worthy of summarization or not. You're designed to be inclusive and summarize a wide range of content formats, including technical descriptions, project overviews, and news articles, even if they have unconventional structures.`
-                },
-                {
-                  role: "user",
-                  content: `I need you to analyze the following web content and determine if it's a summarizable article, news post, project description, or other informative content. 
+    // Use the provided system prompt or fallback to default
+    const finalSystemPrompt =
+      systemPrompt ||
+      `You are an expert at analyzing web content and creating summaries of articles, blog posts, and informative content. You can identify whether content is an article worthy of summarization or not. You're designed to be inclusive and summarize a wide range of content formats, including technical descriptions, project overviews, and news articles, even if they have unconventional structures.`;
+
+    // Use the provided user prompt or fallback to default
+    const finalUserPrompt =
+      userPrompt ||
+      `I need you to analyze the following web content and determine if it's a summarizable article, news post, project description, or other informative content. 
 
 Title extracted from the page: ${title}
 
@@ -271,7 +290,30 @@ For non-summarizable content, use:
   "summary": "Content does not appear to be a summarizable article."
 }
 
-IMPORTANT: Be inclusive in what you consider summarizable. Technical descriptions, project information, research findings, and product details ARE summarizable even if they don't follow traditional article formats.`,
+IMPORTANT: Be inclusive in what you consider summarizable. Technical descriptions, project information, research findings, and product details ARE summarizable even if they don't follow traditional article formats.`;
+
+    while (retries <= maxRetries) {
+      // print the final system and user prompts
+      console.log("Final System Prompt:", systemPrompt);
+      console.log("Final User Prompt:", userPrompt);
+      try {
+        aiResponse = await fetch(
+          `${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "api-key": apiKey,
+            },
+            body: JSON.stringify({
+              messages: [
+                {
+                  role: "system",
+                  content: finalSystemPrompt,
+                },
+                {
+                  role: "user",
+                  content: finalUserPrompt,
                 },
               ],
               max_tokens: 800,
@@ -323,15 +365,15 @@ IMPORTANT: Be inclusive in what you consider summarizable. Technical description
         .replace(/```\s*$/, "")
         .trim();
       jsonOutput = JSON.parse(cleanedOutput);
-      
+
       // Check if this is summarizable content
       if (!jsonOutput.is_summarizable) {
-        return { 
-          title: "NOT AN ARTICLE", 
-          summary: "Content does not appear to be a summarizable article." 
+        return {
+          title: "NOT AN ARTICLE",
+          summary: "Content does not appear to be a summarizable article.",
         };
       }
-      
+
       if (!jsonOutput.title || !jsonOutput.summary) {
         throw new Error("Invalid JSON structure");
       }
@@ -375,7 +417,8 @@ export default async function handler(
   }
 
   try {
-    const { url, articleId } = req.body;
+    // Extract parameters from request body including the new parameters
+    const { url, articleId, systemPrompt, userPrompt, maxWords } = req.body as ArticleRequestBody;
 
     if (!url || typeof url !== "string") {
       return res.status(400).json({ error: "Article URL is required" });
@@ -387,9 +430,9 @@ export default async function handler(
 
     if (isDevelopment) console.log(`Processing article with ID ${articleId}: ${url}`);
 
-    // Process the article
+    // Process the article with optional prompt parameters
     try {
-      const result = await extractAndSummarize(url);
+      const result = await extractAndSummarize(url, systemPrompt, userPrompt, maxWords);
 
       // Create the article object
       const article: Article = {
