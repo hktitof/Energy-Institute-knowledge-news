@@ -35,18 +35,22 @@ export default async function handler(
     // Fetch the Google News search results page
     const response = await axios.get(searchUrl, {
       headers: {
+        // Use a generic Desktop User-Agent
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
+        // CRITICAL: Bypass Google Consent Screen (UK/EU)
+        Cookie: "CONSENT=YES+;",
       },
       timeout: 10000,
-      validateStatus: status => status < 500,
+      validateStatus: (status) => status < 500,
     });
 
     // Check if we got a valid response
     if (response.status !== 200) {
-      if (isDevelopment) console.error("Non-200 status from Google:", response.status);
+      if (isDevelopment)
+        console.error("Non-200 status from Google:", response.status);
       return res.status(response.status).json({
         error: "Failed to fetch from Google",
         details: `Status code: ${response.status}`,
@@ -55,59 +59,60 @@ export default async function handler(
 
     // Parse the HTML response with cheerio
     const $ = load(response.data);
-
-    // Try different selectors for Google News articles
-    const selectors = [
-      "div.SoaBEf a",
-      "div.WlydOe a",
-      "div.v7W49e a",
-      "g-card a",
-    ];
-
     const links: string[] = [];
-    let foundArticles = false;
 
-    for (const selector of selectors) {
-      $(selector).each((index: number, element: cheerio.Element) => {
-        const href: string | undefined = $(element).attr("href");
-        if (href && href.startsWith("http") && !href.includes("google.com")) {
-          links.push(href);
-          foundArticles = true;
+    // Strategy: Look inside the main search container (#search) first to avoid footer/nav links
+    // If #search is empty (sometimes happens in mobile view), fallback to body
+    const container = $("#search").length > 0 ? $("#search") : $("body");
+
+    container.find("a").each((_, element) => {
+      const rawHref = $(element).attr("href");
+      if (!rawHref) return;
+
+      let cleanLink = "";
+
+      // Case 1: Direct Link
+      if (rawHref.startsWith("http")) {
+        cleanLink = rawHref;
+      }
+      // Case 2: Google Redirect Link (/url?q=...)
+      else if (rawHref.startsWith("/url?q=")) {
+        const match = rawHref.match(/\/url\?q=([^&]+)/);
+        if (match && match[1]) {
+          cleanLink = decodeURIComponent(match[1]);
         }
-      });
+      }
 
-      if (foundArticles) break;
-    }
-
-    // If no articles found with any selector, try a more generic approach
-    if (links.length === 0) {
-      $("a").each((index: number, element: cheerio.Element) => {
-        const href: string | undefined = $(element).attr("href");
-        if (
-          href &&
-          href.startsWith("http") &&
-          !href.includes("google.com") &&
-          !href.includes("gstatic.com") &&
-          !href.includes("googleapis.com")
-        ) {
-          links.push(href);
-        }
-      });
-    }
+      // Filter Logic
+      if (
+        cleanLink &&
+        cleanLink.startsWith("http") &&
+        !cleanLink.includes("google.") && // Blocks google.com, google.co.uk, etc.
+        !cleanLink.includes("youtube.com") &&
+        !cleanLink.includes("blogger.com")
+      ) {
+        links.push(cleanLink);
+      }
+    });
 
     // Remove duplicates
     const uniqueLinks = [...new Set(links)];
 
-    if (isDevelopment) console.log(`Found ${uniqueLinks.length} unique article links`);
+    // Limit to top 10 to match your "last 10 articles" requirement
+    const topLinks = uniqueLinks.slice(0, 10);
+
+    if (isDevelopment)
+      console.log(`Found ${topLinks.length} unique article links`);
 
     // Return the count and links
     return res.status(200).json({
-      count: uniqueLinks.length,
-      links: uniqueLinks,
+      count: topLinks.length,
+      links: topLinks,
     });
   } catch (error: unknown) {
     if (isDevelopment) console.error("Error counting links:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred";
     return res.status(500).json({
       error: "Failed to count links",
       details: errorMessage,
