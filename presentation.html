@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Knowledge Note Tool - Interactive Presentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .step-card {
+        transition: all 0.3s ease;
+        transform: scale(0.95);
+        opacity: 0.7;
+      }
+      .step-card.active {
+        transform: scale(1);
+        opacity: 1;
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+      }
+      .flow-line {
+        transition: all 0.5s ease;
+        opacity: 0.3;
+      }
+      .flow-line.active {
+        opacity: 1;
+      }
+      .pulse-dot {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      .tech-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      .hero-gradient {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <!-- <header class="hero-gradient text-white py-12">
+      <div class="container mx-auto px-6 text-center">
+        <h1 class="text-4xl md:text-6xl font-bold mb-4">Knowledge Note Tool</h1>
+        <p class="text-xl md:text-2xl mb-6 opacity-90">From Manual Process to One-Click Automation</p>
+        <div class="flex flex-wrap justify-center gap-3 mb-8">
+          <span class="tech-badge px-4 py-2 rounded-full text-sm font-semibold">GPT-4o</span>
+          <span class="tech-badge px-4 py-2 rounded-full text-sm font-semibold">Microsoft Azure</span>
+          <span class="tech-badge px-4 py-2 rounded-full text-sm font-semibold">Chrome Extension</span>
+          <span class="tech-badge px-4 py-2 rounded-full text-sm font-semibold">Cloud Database</span>
+        </div>
+        <p class="text-lg opacity-80">By Abdel - Lead Front Engineer, EI Energy Institute</p>
+      </div>
+    </header> -->
+    <header class="hero-gradient text-white py-12">
+  <div class="container mx-auto px-6 text-center">
+    
+    <!-- Your logo goes here -->
+    <!-- <img 
+      src="https://www.energyinst.org/__data/assets/file/0006/894309/EI-Logo-Main-01.svg" 
+      alt="Energy Institute logo" 
+      title="Energy Institute logo" 
+      width="141" 
+      height="32"
+      class="mx-auto mb-6" 
+    > -->
+    <img 
+      src="EI-logo.png" 
+      alt="Energy Institute logo" 
+      title="Energy Institute logo" 
+      class="mx-auto mb-6 w-96 h-auto" 
+    >
+
+    <h1 class="text-4xl md:text-6xl font-bold mb-4">Knowledge Note Tool</h1>
+    <p class="text-xl md:text-2xl mb-6 opacity-90">From Manual Process to One-Click Automation</p>
+    <div class="flex flex-wrap justify-center gap-3 mb-8">
+      <span class="tech-badge px-4 py-2 rounded-full text-sm font-semibold">GPT-4o</span>
+      <span class="tech-badge px-4 py-2 rounded-full text-sm font-semibold">Microsoft Azure</span>
+      <span class="tech-badge px-4 py-2 rounded-full text-sm font-semibold">Chrome Extension</span>
+      <span class="tech-badge px-4 py-2 rounded-full text-sm font-semibold">Cloud Database</span>
+    </div>
+    <p class="text-lg opacity-80">By Abdel - Lead Front Engineer, EI Energy Institute</p>
+  </div>
+</header>
+
+    <!-- Problem Statement -->
+    <section class="py-12 bg-white">
+      <div class="container mx-auto px-6">
+        <div class="max-w-4xl mx-auto text-center">
+          <h2 class="text-3xl font-bold text-gray-800 mb-8">The Challenge</h2>
+          <div class="grid md:grid-cols-2 gap-8">
+            <div class="bg-red-50 p-6 rounded-lg border-l-4 border-red-400">
+              <h3 class="text-xl font-semibold text-red-800 mb-4">Manual Process</h3>
+              <ul class="text-red-700 space-y-2 text-left">
+                <li>• Manual Google searches for each category</li>
+                <li>• Visiting multiple websites individually</li>
+                <li>• Reading and summarizing articles manually</li>
+                <li>• Time-consuming Excel sheet management</li>
+                <li>• Repetitive weekly workflow</li>
+              </ul>
+            </div>
+            <div class="bg-green-50 p-6 rounded-lg border-l-4 border-green-400">
+              <h3 class="text-xl font-semibold text-green-800 mb-4">Our Solution</h3>
+              <ul class="text-green-700 space-y-2 text-left">
+                <li>• One-click automation</li>
+                <li>• AI-powered summarization</li>
+                <li>• Advanced web scraping</li>
+                <li>• Automated Word document generation</li>
+                <li>• Future: Complete AI Agent</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Workflow -->
+    <section class="py-16 bg-gray-100">
+      <div class="container mx-auto px-6">
+        <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">Workflow</h2>
+
+        <!-- Controls -->
+        <!-- <div class="text-center mb-12">
+          <div class="inline-flex bg-white rounded-lg p-2 shadow-lg">
+            <button id="prevBtn" class="px-4 py-2 text-gray-600 hover:text-blue-600 transition-colors">
+              ← Previous
+            </button>
+            <button
+              id="resetBtn"
+              class="px-4 py-2 mx-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+            >
+              Reset
+            </button>
+            <button id="nextBtn" class="px-4 py-2 text-gray-600 hover:text-blue-600 transition-colors">Next →</button>
+          </div>
+          <p class="mt-4 text-gray-600">Step <span id="currentStep">0</span> of <span id="totalSteps">8</span></p>
+        </div> -->
+
+        <!-- Workflow Steps -->
+        <div class="relative max-w-6xl mx-auto">
+          <!-- Step 0: Initial State -->
+          <!-- <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="0">
+            <div class="text-center">
+              <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-white text-2xl">🚀</span>
+              </div>
+              <h3 class="text-2xl font-bold text-gray-800 mb-4">Welcome to Knowledge Note Tool</h3>
+              <p class="text-gray-600 mb-6">Click Next to see how our automated system works</p>
+              <div class="bg-blue-50 p-4 rounded-lg">
+                <p class="text-blue-800 font-semibold">Ready to transform your workflow!</p>
+              </div>
+            </div>
+          </div> -->
+
+          <!-- Step 1: Database Setup -->
+          <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="1">
+            <div class="flex items-start space-x-6">
+              <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-2xl">🗄️</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">1. Database Configuration</h3>
+                <p class="text-gray-600 mb-4">
+                  Our cloud database stores all categories and search terms, replacing the manual Excel sheet approach.
+                </p>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-purple-800 mb-2">What's happening:</h4>
+                  <ul class="text-purple-700 space-y-1">
+                    <li>• Categories and search terms are pre-configured</li>
+                    <li>• Custom article links can be added during the week</li>
+                    <li>• All data is stored securely in the cloud</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Fetch All News -->
+          <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="2">
+            <div class="flex items-start space-x-6">
+              <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-2xl">📰</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">2. Click "Fetch All News" Button</h3>
+                <p class="text-gray-600 mb-4">
+                  One click starts the automated news gathering process for all categories.
+                </p>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-800 mb-2">Process initiated:</h4>
+                  <ul class="text-green-700 space-y-1">
+                    <li>• System loops through each category</li>
+                    <li>• Executes search terms automatically</li>
+                    <li>• Begins multi-level article fetching</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Web Scraping -->
+          <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="3">
+            <div class="flex items-start space-x-6">
+              <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-2xl">🌐</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">3. Advanced Web Scraping</h3>
+                <p class="text-gray-600 mb-4">
+                  Multi-layered approach to access articles from various websites with different restrictions.
+                </p>
+                <div class="grid md:grid-cols-3 gap-4">
+                  <div class="bg-blue-50 p-3 rounded">
+                    <h5 class="font-semibold text-blue-800">Level 1: Direct</h5>
+                    <p class="text-blue-700 text-sm">Standard HTTP requests</p>
+                  </div>
+                  <div class="bg-blue-100 p-3 rounded">
+                    <h5 class="font-semibold text-blue-800">Level 2: Proxy</h5>
+                    <p class="text-blue-700 text-sm">Bypass basic restrictions</p>
+                  </div>
+                  <div class="bg-blue-200 p-3 rounded">
+                    <h5 class="font-semibold text-blue-800">Level 3: Chrome Extension</h5>
+                    <p class="text-blue-700 text-sm">Human-like interaction</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4: AI Processing -->
+          <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="4">
+            <div class="flex items-start space-x-6">
+              <div class="w-16 h-16 bg-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-2xl">🤖</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">4. AI-Powered Summarization</h3>
+                <p class="text-gray-600 mb-4">
+                  GPT-4o deployed on Microsoft Azure processes each article with custom instructions.
+                </p>
+                <div class="bg-indigo-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-indigo-800 mb-2">AI Processing:</h4>
+                  <ul class="text-indigo-700 space-y-1">
+                    <li>• Extracts clean text from HTML</li>
+                    <li>• Applies custom system instructions</li>
+                    <li>• Generates title and concise summary</li>
+                    <li>• Maintains consistent formatting</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 5: Chrome Extension -->
+          <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="5">
+            <div class="flex items-start space-x-6">
+              <div class="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-2xl">🔧</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">5. Chrome Extension Action</h3>
+                <p class="text-gray-600 mb-4">
+                  One more click on the Chrome extension resolves any remaining restricted articles.
+                </p>
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-yellow-800 mb-2">Extension capabilities:</h4>
+                  <ul class="text-yellow-700 space-y-1">
+                    <li>• Simulates human browser behavior</li>
+                    <li>• Bypasses advanced website restrictions</li>
+                    <li>• Handles JavaScript-heavy sites</li>
+                    <li>• Completes the article collection</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 6: Article Selection -->
+          <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="6">
+            <div class="flex items-start space-x-6">
+              <div class="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-2xl">✅</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">6. Article Selection Interface</h3>
+                <p class="text-gray-600 mb-4">
+                  All articles are displayed in an organized table where you can select which ones to include.
+                </p>
+                <div class="bg-orange-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-orange-800 mb-2">Selection features:</h4>
+                  <ul class="text-orange-700 space-y-1">
+                    <li>• View all fetched articles by category</li>
+                    <li>• Preview summaries before selection</li>
+                    <li>• Easy checkbox selection interface</li>
+                    <li>• Category-wise organization</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 7: Final Summarization -->
+          <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="7">
+            <div class="flex items-start space-x-6">
+              <div class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-2xl">📝</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">7. Generate Knowledge Note</h3>
+                <p class="text-gray-600 mb-4">
+                  Final click creates a summary of summaries for each category and generates the structured Word
+                  document.
+                </p>
+                <div class="bg-red-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-red-800 mb-2">Final processing:</h4>
+                  <ul class="text-red-700 space-y-1">
+                    <li>• Combines selected article summaries by category</li>
+                    <li>• Creates comprehensive category overviews</li>
+                    <li>• Formats into professional Word document</li>
+                    <li>• Ready for email distribution</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 8: Future AI Agent -->
+          <div class="step-card bg-white rounded-lg p-6 mb-8 border-2 border-gray-200" data-step="8">
+            <div class="flex items-start space-x-6">
+              <div
+                class="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0"
+              >
+                <span class="text-white text-2xl">🚀</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">8. Future: Complete AI Agent</h3>
+                <p class="text-gray-600 mb-4">
+                  V2 includes settings for AI customization, leading to a fully autonomous AI agent.
+                </p>
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-purple-800 mb-2">Coming next:</h4>
+                  <ul class="text-purple-700 space-y-1">
+                    <li>• Customizable AI system instructions</li>
+                    <li>• Automated scheduling (ready by Tuesday)</li>
+                    <li>• Zero-click operation</li>
+                    <li>• Complete autonomous workflow</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Technical Architecture -->
+    <section class="py-16 bg-white">
+      <div class="container mx-auto px-6">
+        <div class="max-w-4xl mx-auto">
+          <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">Technical Architecture</h2>
+          <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="text-center p-6 bg-blue-50 rounded-lg">
+              <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-white text-xl">☁️</span>
+              </div>
+              <h3 class="font-semibold text-blue-800 mb-2">Cloud Database</h3>
+              <p class="text-blue-600 text-sm">Secure storage for categories, search terms, and custom links</p>
+            </div>
+            <div class="text-center p-6 bg-green-50 rounded-lg">
+              <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-white text-xl">🤖</span>
+              </div>
+              <h3 class="font-semibold text-green-800 mb-2">GPT-4o on Azure</h3>
+              <p class="text-green-600 text-sm">Advanced AI model for content summarization and processing</p>
+            </div>
+            <div class="text-center p-6 bg-purple-50 rounded-lg">
+              <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-white text-xl">🔧</span>
+              </div>
+              <h3 class="font-semibold text-purple-800 mb-2">Chrome Extension</h3>
+              <p class="text-purple-600 text-sm">Smart web scraping with human-like behavior simulation</p>
+            </div>
+            <div class="text-center p-6 bg-orange-50 rounded-lg">
+              <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-white text-xl">🌐</span>
+              </div>
+              <h3 class="font-semibold text-orange-800 mb-2">Web Application</h3>
+              <p class="text-orange-600 text-sm">Modern interface with latest web technologies</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cost Reveal Section (Add this to your HTML) -->
+    <!-- Cost Reveal Section (FIXED) -->
+    <section class="py-16 bg-gradient-to-r from-indigo-600 to-purple-600">
+      <div class="container mx-auto px-6">
+        <div class="max-w-2xl mx-auto text-center">
+          <h2 class="text-3xl font-bold text-white mb-8">💰 Monthly Operating Cost</h2>
+          <p class="text-xl text-indigo-100 mb-8">
+            Before we reveal the cost, let's hear your guesses!<br />
+            <span class="text-lg opacity-80">How much do you think this entire system costs us monthly?</span>
+          </p>
+
+          <!-- Clickable Cost Reveal Card -->
+          <!-- Changes: 
+                1. Added 'grid place-items-center' to this container.
+                2. Removed 'relative'.
+            -->
+          <div id="costRevealCard" class="cursor-pointer group grid place-items-center">
+            <!-- Before Click - Question Mark -->
+            <!-- Changes:
+                    1. Added inline style for grid-area to stack it.
+                    2. Added w-full to ensure it fills the container.
+                -->
+            <div
+              id="costQuestion"
+              style="grid-area: 1 / 1"
+              class="w-full bg-white rounded-xl p-8 shadow-2xl transform transition-all duration-300 hover:scale-105 hover:shadow-3xl"
+            >
+              <div class="text-8xl mb-4 text-gray-400 group-hover:text-indigo-500 transition-colors duration-300">
+                ❓
+              </div>
+              <h3 class="text-2xl font-bold text-gray-800 mb-2">Click to Reveal</h3>
+              <p class="text-gray-600">Monthly cost for Version 1</p>
+              <div class="mt-4 text-sm text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                👆 Click me!
+              </div>
+            </div>
+
+            <!-- After Click - Cost Reveal -->
+            <!-- Changes:
+                    1. Removed 'absolute inset-0'.
+                    2. Added inline style for grid-area to stack it.
+                    3. Added w-full to ensure it fills the container.
+                -->
+            <div
+              id="costReveal"
+              style="grid-area: 1 / 1"
+              class="w-full bg-white rounded-xl p-8 shadow-2xl transform scale-0 opacity-0 transition-all duration-500 ease-out"
+            >
+              <div class="relative">
+                <!-- Surprise Animation Elements -->
+                <div class="absolute -top-2 -left-2 text-3xl animate-bounce">🎉</div>
+                <div class="absolute -top-2 -right-2 text-3xl animate-bounce" style="animation-delay: 0.2s">✨</div>
+                <div class="absolute -bottom-2 -left-2 text-3xl animate-bounce" style="animation-delay: 0.4s">💫</div>
+                <div class="absolute -bottom-2 -right-2 text-3xl animate-bounce" style="animation-delay: 0.6s">🚀</div>
+
+                <!-- Main Cost Display -->
+                <div class="text-8xl font-bold text-green-500 mb-4 animate-pulse">£5</div>
+                <h3 class="text-3xl font-bold text-gray-800 mb-2">That's it!</h3>
+                <p class="text-xl text-gray-600 mb-4">
+                  Only <span class="font-bold text-green-600">£5 per month</span> for the entire system!
+                </p>
+
+                <!-- Cost Breakdown -->
+                <div class="bg-green-50 rounded-lg p-4 mt-6 text-left">
+                  <h4 class="font-semibold text-green-800 mb-3">What this includes:</h4>
+                  <div class="space-y-2 text-green-700">
+                    <div class="flex items-center">
+                      <span class="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                      <span>GPT-4o API calls for AI summarization</span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                      <span>Microsoft Azure cloud hosting</span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                      <span>Database storage and operations</span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                      <span>Web scraping infrastructure</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ROI Highlight -->
+                <div class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                  <p class="text-indigo-800 font-semibold">
+                    💡 ROI: Saves hours of manual work weekly for just £5/month!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reset Button (appears after reveal) -->
+          <button
+            id="resetCostBtn"
+            class="mt-8 px-6 py-3 bg-white text-indigo-600 rounded-lg font-semibold hover:bg-indigo-50 transition-colors duration-300 opacity-0 transform translate-y-4"
+          >
+            🔄 Reset
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      // Cost Reveal Functionality
+      document.addEventListener("DOMContentLoaded", function () {
+        const costRevealCard = document.getElementById("costRevealCard");
+        const costQuestion = document.getElementById("costQuestion");
+        const costReveal = document.getElementById("costReveal");
+        const resetCostBtn = document.getElementById("resetCostBtn");
+
+        let isRevealed = false;
+
+        // Click to reveal cost
+        costRevealCard.addEventListener("click", function () {
+          if (!isRevealed) {
+            // Hide question card
+            costQuestion.style.transform = "scale(0) rotate(180deg)";
+            costQuestion.style.opacity = "0";
+
+            // Show reveal card with animation
+            setTimeout(() => {
+              costReveal.style.transform = "scale(1) rotate(0deg)";
+              costReveal.style.opacity = "1";
+
+              // Show reset button
+              setTimeout(() => {
+                resetCostBtn.style.opacity = "1";
+                resetCostBtn.style.transform = "translateY(0)";
+              }, 800);
+            }, 300);
+
+            isRevealed = true;
+            costRevealCard.style.cursor = "default";
+
+            // Add confetti effect (optional)
+            createConfetti();
+          }
+        });
+
+        // Reset functionality
+        resetCostBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+
+          // Hide reset button
+          resetCostBtn.style.opacity = "0";
+          resetCostBtn.style.transform = "translateY(4px)";
+
+          // Hide reveal card
+          costReveal.style.transform = "scale(0) rotate(-180deg)";
+          costReveal.style.opacity = "0";
+
+          // Show question card
+          setTimeout(() => {
+            costQuestion.style.transform = "scale(1) rotate(0deg)";
+            costQuestion.style.opacity = "1";
+          }, 300);
+
+          isRevealed = false;
+          costRevealCard.style.cursor = "pointer";
+        });
+
+        // Optional confetti effect function
+        function createConfetti() {
+          const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7"];
+          const confettiCount = 50;
+
+          for (let i = 0; i < confettiCount; i++) {
+            setTimeout(() => {
+              const confetti = document.createElement("div");
+              confetti.style.position = "fixed";
+              confetti.style.left = Math.random() * 100 + "vw";
+              confetti.style.top = "-10px";
+              confetti.style.width = "10px";
+              confetti.style.height = "10px";
+              confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+              confetti.style.pointerEvents = "none";
+              confetti.style.zIndex = "9999";
+              confetti.style.borderRadius = "50%";
+
+              document.body.appendChild(confetti);
+
+              // Animate confetti falling
+              let position = -10;
+              const fallSpeed = Math.random() * 3 + 2;
+              const sway = Math.random() * 2 - 1;
+
+              const fall = setInterval(() => {
+                position += fallSpeed;
+                confetti.style.top = position + "px";
+                confetti.style.left = parseFloat(confetti.style.left) + sway + "px";
+
+                if (position > window.innerHeight) {
+                  clearInterval(fall);
+                  document.body.removeChild(confetti);
+                }
+              }, 16);
+            }, i * 50);
+          }
+        }
+      });
+    </script>
+
+    <style>
+      /* Additional styles for the cost reveal component */
+      .hover\:shadow-3xl:hover {
+        box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.25);
+      }
+
+      @keyframes bounce {
+        0%,
+        20%,
+        53%,
+        80%,
+        100% {
+          transform: translate3d(0, 0, 0);
+        }
+        40%,
+        43% {
+          transform: translate3d(0, -8px, 0);
+        }
+        70% {
+          transform: translate3d(0, -4px, 0);
+        }
+        90% {
+          transform: translate3d(0, -2px, 0);
+        }
+      }
+
+      .animate-bounce {
+        animation: bounce 1s infinite;
+      }
+    </style>
+
+    <!-- Impact -->
+    <section class="py-16 bg-gray-800 text-white">
+      <div class="container mx-auto px-6 text-center">
+        <h2 class="text-3xl font-bold mb-8">Impact & Results</h2>
+        <div class="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div>
+            <div class="text-4xl font-bold text-blue-400 mb-2">95%</div>
+            <div class="text-gray-300">Time Reduction</div>
+          </div>
+          <div>
+            <div class="text-4xl font-bold text-green-400 mb-2">1-Click</div>
+            <div class="text-gray-300">Operation</div>
+          </div>
+          <div>
+            <div class="text-4xl font-bold text-purple-400 mb-2">100%</div>
+            <div class="text-gray-300">Automation Goal</div>
+          </div>
+        </div>
+        <div class="mt-12 max-w-2xl mx-auto">
+          <p class="text-xl text-gray-300 leading-relaxed">
+            From hours of manual work to a single click, transforming how the Knowledge Department creates their weekly
+            reports.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      let currentStepIndex = 0;
+      const totalSteps = 8;
+
+      const stepCards = document.querySelectorAll(".step-card");
+      const currentStepSpan = document.getElementById("currentStep");
+      const totalStepsSpan = document.getElementById("totalSteps");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const resetBtn = document.getElementById("resetBtn");
+
+      totalStepsSpan.textContent = totalSteps;
+
+      function updateStep() {
+        stepCards.forEach((card, index) => {
+          if (index === currentStepIndex) {
+            card.classList.add("active");
+            card.scrollIntoView({ behavior: "smooth", block: "center" });
+          } else {
+            card.classList.remove("active");
+          }
+        });
+
+        currentStepSpan.textContent = currentStepIndex;
+
+        prevBtn.style.opacity = currentStepIndex === 0 ? "0.5" : "1";
+        nextBtn.style.opacity = currentStepIndex === totalSteps ? "0.5" : "1";
+      }
+
+      nextBtn.addEventListener("click", () => {
+        if (currentStepIndex < totalSteps) {
+          currentStepIndex++;
+          updateStep();
+        }
+      });
+
+      prevBtn.addEventListener("click", () => {
+        if (currentStepIndex > 0) {
+          currentStepIndex--;
+          updateStep();
+        }
+      });
+
+      resetBtn.addEventListener("click", () => {
+        currentStepIndex = 0;
+        updateStep();
+      });
+
+      // Initialize
+      updateStep();
+
+      // Keyboard navigation
+      document.addEventListener("keydown", e => {
+        if (e.key === "ArrowRight" || e.key === " ") {
+          e.preventDefault();
+          nextBtn.click();
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          prevBtn.click();
+        } else if (e.key === "r" || e.key === "R") {
+          e.preventDefault();
+          resetBtn.click();
+        }
+      });
+    </script>
+  </body>
+</html>
