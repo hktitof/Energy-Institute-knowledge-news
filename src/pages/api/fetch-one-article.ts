@@ -232,46 +232,43 @@ async function extractAndSummarize(url: string, maxWords: number = 100): Promise
               messages: [
                 {
                   role: "system",
-                  content: `You are an expert at analyzing web content and creating summaries of articles, blog posts, and informative content. You can identify whether content is an article worthy of summarization or not. You're designed to be inclusive and summarize a wide range of content formats, including technical descriptions, project overviews, and news articles, even if they have unconventional structures.`
+                  content: `You are a Senior Technical Analyst for the Energy Institute (London). 
+Your goal is to extract high-value market intelligence from energy sector news.
+You prioritize: 
+1. Hard data (Capacity in MW/GW, Investment in £/$, Dates).
+2. Key stakeholders (Companies, Governments).
+3. Strategic implications.
+You use British English (e.g., 'programme', 'organise').`
                 },
                 {
                   role: "user",
-                  content: `I need you to analyze the following web content and determine if it's a summarizable article, news post, project description, or other informative content. 
+                  content: `Analyze the following web content.
 
-Title extracted from the page: ${title}
-
-Content extracted from the page:
+Title: ${title}
+Content:
 ---
 ${textContent}
 ---
 
-First, determine if this is SUMMARIZABLE CONTENT. Content is summarizable if it:
-1. Contains informative, factual, or news-related information
-2. Has a coherent narrative or structure
-3. Provides details about events, projects, research, products, etc.
-4. Is NOT primarily navigation menus, sparse listings, or computer-generated code
+INSTRUCTIONS:
+1. **Validation**: If the content is a cookie banner, login page, or paywall, set "is_summarizable": false.
+2. **Extraction**: Ignore marketing fluff. Focus on the "Who, What, How Much, and When".
+3. **Length**: Keep the total summary under ${maxWords} words.
 
-Even if the content has an unconventional structure or is presented as a project overview, product description, or technical information, it can still be summarizable if it communicates meaningful information.
-
-If the content IS summarizable, create a concise summary (maximum ${maxWords} words) capturing the key information.
-
-If the content is NOT summarizable (meaning it's just navigation elements, random text snippets without context, or computer code), indicate this in your response.
-
-Return your analysis as a JSON object with this format:
+OUTPUT FORMAT (JSON):
+Return a JSON object.
 {
   "is_summarizable": true/false,
-  "title": "The original title or improved version if needed",
-  "summary": "Your concise summary of the content"
+  "title": "A professional, neutral headline (fix clickbait)",
+  "summary": "Start with a 1-sentence **Executive Summary**.\\n\\n**Key Details:**\\n- [Bullet point 1: Hard Number/Fact]\\n- [Bullet point 2: Stakeholder/Location]\\n- [Bullet point 3: Timeline]\\n\\n**Industry Implication:** [1 sentence on what this means for the sector]."
 }
 
-For non-summarizable content, use:
+If not summarizable:
 {
   "is_summarizable": false,
   "title": "NOT AN ARTICLE",
-  "summary": "Content does not appear to be a summarizable article."
-}
-
-IMPORTANT: Be inclusive in what you consider summarizable. Technical descriptions, project information, research findings, and product details ARE summarizable even if they don't follow traditional article formats.`,
+  "summary": "Content invalid."
+}`,
                 },
               ],
               max_tokens: 800,

@@ -35,7 +35,7 @@ export default async function handler(
     categoryName = "", 
     articles, 
     maxWords = 50,
-    customPrompt = "Create a single, concise summary of these {categoryName} articles in exactly {maxWords} words. Focus on the most important points. Return ONLY the summary text without any formatting or prefixes."
+    customPrompt = "Produce a structured **Executive Briefing** for the {categoryName} sector based on these articles. \n\nStructure:\n1. **Sector Overview**: A 2-sentence high-level summary of the trend.\n2. **Key Developments**: A bulleted list of the most significant projects, deals, or policy changes mentioned (include figures like MW, £, $ where available).\n3. **Forward Look**: What is the immediate next step or implication?\n\nKeep the total length under {maxWords} words. Use British English. Tone: Professional, Objective, Authoritative."
   }: RequestBody = req.body;
 
   if (!articles || !Array.isArray(articles) || articles.length === 0) {
