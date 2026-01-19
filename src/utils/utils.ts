@@ -103,3 +103,73 @@ export const fetchCategories = async (setCategories: React.Dispatch<React.SetSta
     throw error; // Re-throw the error so the caller can handle it
   }
 };
+
+// Define the valid keys for our prompts
+export type PromptPurpose = "article_summary" | "summary_of_summary";
+
+
+// ==========================================
+// TEMPLATE VARIABLE DEFINITIONS (Fixed Types)
+// ==========================================
+
+export const singleArticleTemplateVariables = [
+  { name: "{title}", description: "The title extracted from the web page" },
+  { name: "{textContent}", description: "The full scraped text content" },
+  { name: "{maxWords}", description: "Target word count for the summary" }
+];
+
+export const summaryOfSummariesTemplateVariables = [
+  { name: "{categoryName}", description: "The specific category being processed" },
+  { name: "{maxWords}", description: "Target word count for the summary" }
+];
+
+// ==========================================
+// RESTORED PROMPTS FROM LOCAL DB (Fixed)
+// ==========================================
+
+// 1. Single Article - System Prompt
+export const default_single_article_systemPrompt = `You are an expert at analyzing web content and creating summaries of articles, blog posts, and informative content. You can identify whether content is an article worthy of summarization or not. You're designed to be inclusive and summarize a wide range of content formats, including technical descriptions, project overviews, and news articles, even if they have unconventional structures`;
+
+// 2. Single Article - User Prompt
+// Note: We use \\${ to preserve the literal characters found in the DB
+export const default_single_article_userPromptInstructions = `I need you to analyze the following web content and determine if it's a summarizable article, news post, project description, or other informative content.
+
+Title extracted from the page: \${"{title}"}
+Content extracted from the page:
+---
+\${"{textContent}"}
+---
+
+First, determine if this is SUMMARIZABLE CONTENT. Content is summarizable if it:
+1. Contains informative, factual, or news-related information
+2. Has a coherent narrative or structure
+3. Provides details about events, projects, research, products, etc.
+4. Is NOT primarily navigation menus, sparse listings, or computer-generated code
+
+Even if the content has an unconventional structure or is presented as a project overview, product description, or technical information, it can still be summarizable if it communicates meaningful information.
+
+If the content IS summarizable, create a concise summary (maximum \${"{maxWords}"} words) capturing the key information.
+
+If the content is NOT summarizable (meaning it's just navigation elements, random text snippets without context, or computer code), indicate this in your response.
+
+Return your analysis as a JSON object with this format:
+{
+  "is_summarizable": true/false,
+  "title": "The original title or improved version if needed",
+  "summary": "Your concise summary of the content"
+}
+
+For non-summarizable content, use:
+{
+  "is_summarizable": false,
+  "title": "NOT AN ARTICLE",
+  "summary": "Content does not appear to be a summarizable article."
+}
+
+IMPORTANT: Be inclusive in what you consider summarizable. Technical descriptions, project information, research findings, and product details ARE summarizable even if they don't follow traditional article formats.`;
+
+// 3. Summary of Summary - System Prompt
+export const default_summary_of_summary_systemPrompt = `You are an AI assistant specialized in summarizing articles.`;
+
+// 4. Summary of Summary - User Prompt
+export const default_summary_of_summary_userPromptInstructions = `Create a single, concise summary of these {categoryName} articles in exactly {maxWords} words. Focus on the most important points. Return ONLY the summary text without any formatting or prefixes.`;

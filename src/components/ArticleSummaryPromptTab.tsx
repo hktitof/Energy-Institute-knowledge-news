@@ -90,6 +90,7 @@ export default function ArticleSummaryPromptTab() {
     await savePrompts({
       systemPrompt: default_single_article_systemPrompt,
       userPrompt: default_single_article_userPromptInstructions,
+      maxWords: 150, // <--- Fixed: Added the missing default from DB
     });
 
     // The hook's savePrompts function now handles updating the hook's internal state
