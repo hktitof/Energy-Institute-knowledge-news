@@ -1,5 +1,4 @@
 import axios from "axios";
-import { load } from "cheerio";
 import { NextApiRequest, NextApiResponse } from "next";
 
 interface CountLinksResponse {
@@ -23,72 +22,64 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-try {
+  try {
     const { searchUrl } = req.body;
 
     if (!searchUrl || typeof searchUrl !== "string") {
       return res.status(400).json({ error: "Search URL is required" });
     }
 
-   // --- NEW: UK Bypass Strategy ---
-    // Keep the original UK search URL
-    const fetchUrl = searchUrl;
-    
-    if (isDevelopment) console.log("Fetching UK URL:", fetchUrl);
+    if (isDevelopment) console.log("Sending Google URL to n8n webhook:", searchUrl);
 
-    // Spoof Googlebot AND pass the EU/UK Consent cookies
-    const response = await axios.get(fetchUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "X-Forwarded-For": "66.249.66.1",
-        "Cookie": "CONSENT=YES+cb.20230531-04-p0.en+FX+378; SOCS=CAESHAgBEhJnd3NfMjAyMzA4MTAtMF9SQzIaAmVuIAEaBgiA_LyaBg;"
-      },
-      timeout: 10000,
-      validateStatus: (status) => status < 500,
+    // Hit your n8n test webhook
+    const response = await axios.post("https://n8n.energyinst.net/webhook/1549c858-5b73-4d57-af5e-f661cec72b5d", {
+      url: searchUrl
+    }, {
+      timeout: 45000,
+      validateStatus: (status) => status < 500
     });
 
-    // Check if we got a valid response
     if (response.status !== 200) {
-      if (isDevelopment) console.error("Non-200 status from Google:", response.status);
+      if (isDevelopment) console.error("n8n API Error:", response.data);
       return res.status(response.status).json({
-        error: "Failed to fetch from Google",
-        details: `Status code: ${response.status}`,
+        error: "Failed to fetch from n8n API",
+        details: response.data?.error || "Unknown error",
       });
     }
 
-    // Parse the HTML response with cheerio
-    const $ = load(response.data);
-    const links: string[] = [];
+    // n8n returns an array inside the first item because of how HTTP Request nodes output
+    // We handle both direct array and n8n wrapped array
+    let rawLinks =[];
+    if (Array.isArray(response.data)) {
+      rawLinks = response.data[0]?.links ||[];
+    } else {
+      rawLinks = response.data.links || [];
+    }
+    
+    const links: string[] =[];
 
-    // Fallback logic for container
-    const container = $("#search").length > 0 ? $("#search") : $("body");
+    rawLinks.forEach((rawHref: string) => {
+      let cleanLink = rawHref;
 
-    container.find("a").each((_, element) => {
-      const rawHref = $(element).attr("href");
-      if (!rawHref) return;
-
-      let cleanLink = "";
-
-      // Case 1: Direct Link
-      if (rawHref.startsWith("http")) {
-        cleanLink = rawHref;
-      }
-      // Case 2: Google Redirect Link (/url?q=...)
-      else if (rawHref.startsWith("/url?q=")) {
-        const match = rawHref.match(/\/url\?q=([^&]+)/);
+      // Unpack Google Redirect Links
+      if (cleanLink.includes("/url?q=")) {
+        const match = cleanLink.match(/\/url\?q=([^&]+)/);
         if (match && match[1]) {
           cleanLink = decodeURIComponent(match[1]);
         }
       }
 
-      // Filter Logic
+      // Filter Logic to remove all the Google junk
       if (
         cleanLink &&
         cleanLink.startsWith("http") &&
-        !cleanLink.includes("google.") && 
+        !cleanLink.includes("google.com") && 
+        !cleanLink.includes("google.co.uk") && 
         !cleanLink.includes("youtube.com") &&
-        !cleanLink.includes("blogger.com")
+        !cleanLink.includes("blogger.com") &&
+        !cleanLink.includes("support.google") &&
+        !cleanLink.includes("policies.google") &&
+        !cleanLink.includes("accounts.google")
       ) {
         links.push(cleanLink);
       }
@@ -103,8 +94,8 @@ try {
     if (isDevelopment) {
       console.log(`Found ${topLinks.length} unique article links`);
       if (topLinks.length === 0) {
-        console.log("--- DEBUG GOOGLE RESPONSE ---");
-        console.log("Page Title:", $("title").text());
+        console.log("--- DEBUG n8n RESPONSE ---");
+        console.log("No valid links found. Raw response:", response.data);
         console.log("-----------------------------");
       }
     }
