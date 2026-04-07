@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -31,9 +32,33 @@ export default async function handler(
 
     if (isDevelopment) console.log("Sending Google URL to n8n webhook:", searchUrl);
 
-    // Hit your n8n test webhook
-    const response = await axios.post("https://n8n.energyinst.net/webhook/1549c858-5b73-4d57-af5e-f661cec72b5d", {
-      url: searchUrl
+    // Extract the actual search query from the Google URL
+    let searchQuery = searchUrl;
+    try {
+      if (searchUrl.startsWith("http")) {
+        const urlObj = new URL(searchUrl);
+        searchQuery = urlObj.searchParams.get("q") || searchUrl;
+      }
+    } catch {
+        // Ignore URL parse errors
+        
+    }
+
+    if (isDevelopment) console.log("Extracted Query for RSS Scraper:", searchQuery);
+
+    // Hit your NEW production n8n webhook (Google News RSS Scraper)
+    const webhookUrl = process.env.N8N_GOOGLE_NEWS_WEBHOOK;
+    
+    if (!webhookUrl) {
+      throw new Error("Missing N8N_GOOGLE_NEWS_WEBHOOK in environment variables");
+    }
+
+    // Hit your NEW production n8n webhook (Google News RSS Scraper)
+    const response = await axios.post(webhookUrl, {
+      query: searchQuery,
+      count: 10,
+      time: "7d",
+      resolve_urls: true
     }, {
       timeout: 45000,
       validateStatus: (status) => status < 500
@@ -47,57 +72,24 @@ export default async function handler(
       });
     }
 
-    // n8n returns an array inside the first item because of how HTTP Request nodes output
-    // We handle both direct array and n8n wrapped array
-    let rawLinks =[];
-    if (Array.isArray(response.data)) {
-      rawLinks = response.data[0]?.links ||[];
-    } else {
-      rawLinks = response.data.links || [];
-    }
+    // Parse the articles from the new Python script output
+    const articles = response.data.articles ||[];
     
     const links: string[] =[];
-
-    rawLinks.forEach((rawHref: string) => {
-      let cleanLink = rawHref;
-
-      // Unpack Google Redirect Links
-      if (cleanLink.includes("/url?q=")) {
-        const match = cleanLink.match(/\/url\?q=([^&]+)/);
-        if (match && match[1]) {
-          cleanLink = decodeURIComponent(match[1]);
-        }
-      }
-
-      // Filter Logic to remove all the Google junk
-      if (
-        cleanLink &&
-        cleanLink.startsWith("http") &&
-        !cleanLink.includes("google.com") && 
-        !cleanLink.includes("google.co.uk") && 
-        !cleanLink.includes("youtube.com") &&
-        !cleanLink.includes("blogger.com") &&
-        !cleanLink.includes("support.google") &&
-        !cleanLink.includes("policies.google") &&
-        !cleanLink.includes("accounts.google")
-      ) {
-        links.push(cleanLink);
+    articles.forEach((article: any) => {
+      // Use real_url if resolved, otherwise fallback to the Google News link
+      const urlToUse = article.real_url || article.link;
+      if (urlToUse) {
+        links.push(urlToUse);
       }
     });
 
-    // Remove duplicates
+    // Remove duplicates (though your python script already handles this)
     const uniqueLinks = [...new Set(links)];
-
-    // Limit to top 10
     const topLinks = uniqueLinks.slice(0, 10);
 
     if (isDevelopment) {
       console.log(`Found ${topLinks.length} unique article links`);
-      if (topLinks.length === 0) {
-        console.log("--- DEBUG n8n RESPONSE ---");
-        console.log("No valid links found. Raw response:", response.data);
-        console.log("-----------------------------");
-      }
     }
 
     // Return the count and links
